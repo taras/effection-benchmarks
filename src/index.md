@@ -24,7 +24,7 @@ const DUCKDB_BUNDLES = {
 
 const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
 const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING);
-const worker = await duckdb.createWorker(bundle.mainWorker);
+const worker = new Worker(bundle.mainWorker, { type: "module" });
 const db = new duckdb.AsyncDuckDB(logger, worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
