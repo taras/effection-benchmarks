@@ -1,0 +1,28 @@
+{
+  "name": "effection-performance-dashboard-poc",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "generate": "node scripts/generate-fixtures.js",
+    "parquet": "duckdb < scripts/json-to-parquet.sql",
+    "data": "npm run generate && npm run parquet && cp data/benchmarks.parquet src/data/benchmarks.parquet",
+    "dev": "observable preview",
+    "prebuild": "node scripts/populate-npm-cache.js",
+    "build": "observable build",
+    "clean": "rimraf src/.observablehq/cache"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev18.0",
+    "@observablehq/framework": "^1.13.0",
+    "@observablehq/inputs": "^0.12.0",
+    "@observablehq/plot": "^0.6.17",
+    "apache-arrow": "^21.1.0"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

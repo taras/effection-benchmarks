@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "releaseTag": "v4.1.0",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2025-10-15T14:30:00Z",
+    "runner": {
+      "os": "ubuntu-22.04",
+      "arch": "x86_64"
+    },
+    "scenario": "events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "listeners": 50
+    }
+  },
+  "results": [
+    {
+      "name": "effection",
+      "stats": {
+        "avgTime": 8.15,
+        "minTime": 6.44,
+        "maxTime": 10.21,
+        "stdDev": 1.08,
+        "p50": 7.54,
+        "p95": 8.82,
+        "p99": 9.51
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "releaseTag": "v4.0.0",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2025-09-15T14:30:00Z",
+    "runner": {
+      "os": "ubuntu-22.04",
+      "arch": "x86_64"
+    },
+    "scenario": "events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "listeners": 50
+    }
+  },
+  "results": [
+    {
+      "name": "effection",
+      "stats": {
+        "avgTime": 8.61,
+        "minTime": 7.36,
+        "maxTime": 11.14,
+        "stdDev": 1.1,
+        "p50": 8.13,
+        "p95": 8.98,
+        "p99": 10.57
+      }
+    }
+  ]
+}
