@@ -55,6 +55,38 @@ npm run clean             # Clear Observable cache
 - **Runtimes**: node, deno, playwright-chromium
 - **Scenarios**: recursion, events
 
+## Known Pitfalls
+
+### Two copies of the parquet file
+`data/benchmarks.parquet` is the source of truth (output of the DuckDB conversion). `src/data/benchmarks.parquet` is a copy required by Observable's `FileAttachment`. The `npm run data` script handles the copy, but if you regenerate the parquet manually you must also copy it. They can silently drift — always use `npm run data` to stay in sync.
+
+### Semantic version sorting
+The dashboard sorts releases by `releaseTag` string (`ORDER BY releaseTag`). This works for `v4.0.0` through `v4.4.0` because alphabetical order matches version order. **This breaks for `v4.9.0` vs `v4.10.0`** (lexicographic: `v4.1` < `v4.9` but `v4.10` < `v4.9`). For production, either:
+- Add a numeric `releaseOrder` column in the Parquet conversion
+- Use `timestamp` for ordering instead of `releaseTag`
+- Parse versions in SQL: `string_split(releaseTag, '.')` and cast to integers
+
+### Scenario-specific benchmarkParams are lost in flattening
+The JSON schema has variable keys in `benchmarkParams` — `depth` for recursion, `listeners` for events. The Parquet conversion only preserves `repeat` and `warmup` (the common fields). If you need scenario-specific params in queries, add them as explicit columns in `json-to-parquet.sql` or store `benchmarkParams` as a JSON string column.
+
+### The `results` array supports multiple entries
+The JSON schema allows multiple entries in `results[]` (each with a `name` like `"effection"`). The `unnest(results)` in the SQL handles this correctly, but the dashboard doesn't filter by `benchmarkName`. If you add comparisons against other libraries, add a `benchmarkName` filter to queries and UI.
+
+### `@duckdb/duckdb-wasm` is pinned to a dev release
+`package.json` installs `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, pin to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
+
+### Two different DuckDB WASM versions in play
+`populate-npm-cache.js` pins `@duckdb/duckdb-wasm@1.29.0` because that's what Observable Framework's internal stdlib expects (`DUCKDB_WASM_VERSION` in the framework source). The page itself uses whatever version is in `node_modules` (currently `1.33.1-dev18.0`). These serve different purposes and don't conflict, but it's confusing — the cache entry is only to satisfy the framework's bundler for code paths we don't use.
+
+### Observable Framework version sensitivity
+The `populate-npm-cache.js` workaround is tightly coupled to Observable Framework v1.13. If the framework is upgraded, the list of `npm:` packages in its client runtime may change, breaking the cache. After upgrading `@observablehq/framework`, run the build and add any new `package@version` entries that appear in `fetch failed` errors.
+
+### `docs/` is a manual snapshot
+The `docs/` directory is committed for GitHub Pages but is not automatically rebuilt. After changing source code, you must run `npm run build` and copy `dist/` to `docs/` again. In production, use GitHub Actions to automate this — don't commit `docs/` at all, deploy `dist/` directly.
+
+### FileAttachment only accepts string literals
+Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile time. You cannot dynamically construct paths like `` FileAttachment(`data/${name}.parquet`) ``. If you need multiple parquet files, each must be referenced with a literal string in the source.
+
 ## Key Technical Decisions & Gotchas
 
 ### Observable Framework offline builds
@@ -210,3 +242,30 @@ The POC interpolates JavaScript variables directly into SQL strings. This is saf
 const stmt = await conn.prepare("SELECT * FROM benchmarks WHERE scenario = ?");
 const result = await stmt.query(scenario);
 ```
+
+### DuckDB connection management
+The `query()` helper in `index.md` creates a new connection per query and closes it in a `finally` block. This is correct — DuckDB WASM connections are lightweight. Don't try to reuse a single connection across reactive cells because Observable may re-execute cells concurrently when inputs change.
+
+### Error handling
+The POC has no error handling for DuckDB WASM initialization failures or missing parquet files. In production, wrap the initialization in try/catch and show a user-friendly message. Common failure modes:
+- Browser doesn't support WebAssembly (very old browsers)
+- Parquet file fails to load (404, CORS issues on GitHub Pages)
+- DuckDB WASM bundle fails to download (ad blockers sometimes block `.wasm` files)
+
+### Incremental data updates
+Currently the parquet file is rebuilt from scratch via `read_json_auto('data/json/*.json')`. This is fine for hundreds of files but scales poorly. For production with thousands of benchmark runs, consider:
+- Partitioned parquet files by release or date range
+- Appending new rows instead of full rebuild: `INSERT INTO ... SELECT FROM read_json_auto('new_file.json')`
+- Using DuckDB's `UNION ALL` across multiple parquet files
+
+### Observable cell execution order
+Observable cells execute in dependency order, not document order. The DuckDB initialization cell defines `db`, and all `query()` calls reference `db`, so Observable ensures init completes first. This is automatic — you don't need explicit awaits between cells. However, if you split initialization across multiple cells, ensure each subsequent cell references a variable from the previous one to maintain the dependency chain.
+
+### Adding new runtimes or scenarios
+When real benchmarks add new runtimes or scenarios beyond the POC's fixtures:
+1. The Parquet conversion (`json-to-parquet.sql`) needs no changes — it reads whatever JSON files exist
+2. The `Inputs.select()` dropdown options in `index.md` are hardcoded — update them or query the parquet for distinct values:
+   ```js
+   const scenarios = (await query("SELECT DISTINCT scenario FROM benchmarks ORDER BY scenario")).map(r => r.scenario);
+   const runtimes = (await query("SELECT DISTINCT runtime FROM benchmarks ORDER BY runtime")).map(r => r.runtime);
+   ```
