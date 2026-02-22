@@ -1,8 +1,14 @@
 {
   "tasks": {
+    "generate": "deno run -A scripts/generate-fixtures.js",
+    "parquet": "duckdb < scripts/json-to-parquet.sql",
+    "data": "deno task generate && deno task parquet",
+    "build": "deno run -A npm:@observablehq/framework@1.13.3/dist/bin/observable.js build",
+    "preview": "deno run -A npm:@observablehq/framework@1.13.3/dist/bin/observable.js preview",
+    "clean": "rm -rf src/.observablehq/cache",
     "dev": "deno run -A main.tsx",
     "start": "deno run -A main.tsx",
-    "check": "deno check main.tsx routes/**/*.ts plugins/**/*.ts context/**/*.ts",
+    "check": "deno check main.tsx plugins/**/*.ts context/**/*.ts",
     "lint": "deno lint",
     "fmt": "deno fmt"
   },

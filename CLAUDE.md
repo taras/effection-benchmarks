@@ -9,7 +9,7 @@ Static performance dashboard for the Effection structured concurrency library. B
 ```
 scripts/generate-fixtures.js     →  data/json/*.json (30 benchmark files)
 scripts/json-to-parquet.sql      →  src/data/benchmarks.parquet (flattened)
-npm run build                    →  dist/ (Observable static site)
+deno task build                  →  dist/ (Observable static site)
 deno task dev                    →  Revolution server (serves dist/ + /sitemap.xml)
 ```
 
@@ -24,18 +24,15 @@ All SQL queries run client-side in the browser via DuckDB WASM. The Parquet file
 
 ## Commands
 
-```bash
-npm run generate          # Create fake benchmark JSON fixtures
-npm run parquet           # Convert JSON → Parquet (requires duckdb CLI)
-npm run data              # Run generate + parquet (writes directly to src/data/)
-npm run build             # Build Observable Framework site (requires network access)
-npm run dev               # Start Observable preview server
-npm run clean             # Clear Observable cache
-```
-
-### Deno/Revolution Commands
+All commands use Deno. No Node.js or npm required.
 
 ```bash
+deno task generate        # Create fake benchmark JSON fixtures
+deno task parquet         # Convert JSON → Parquet (requires duckdb CLI)
+deno task data            # Run generate + parquet (writes directly to src/data/)
+deno task build           # Build Observable Framework site (requires network access)
+deno task preview         # Start Observable preview server
+deno task clean           # Clear Observable cache
 deno task dev             # Start Revolution server (serves dist/ + sitemap)
 deno task start           # Same as dev
 deno task check           # Type check all TypeScript files
@@ -85,13 +82,8 @@ The dashboard sorts releases by `releaseTag` string (`ORDER BY releaseTag`). Thi
 ### The `results` array supports multiple entries
 The JSON schema allows multiple entries in `results[]` (each with a `name` like `"effection"`). The `unnest(results)` in the SQL handles this correctly, but the dashboard doesn't filter by `benchmarkName`. If you add comparisons against other libraries, add a `benchmarkName` filter to queries and UI.
 
-### `@duckdb/duckdb-wasm` is pinned to a dev release
-`package.json` installs `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, pin to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
-
-### `docs/` is a manual snapshot
-The `docs/` directory is committed for GitHub Pages but is not automatically rebuilt. After changing source code, you must run `npm run build` and copy `dist/` to `docs/` again. In production, use GitHub Actions to automate this — don't commit `docs/` at all, deploy `dist/` directly.
-
-**Note**: With the new Deno Deploy architecture, `docs/` is no longer used. The site deploys directly from `main.tsx` which serves `dist/`.
+### `@duckdb/duckdb-wasm` uses a dev release
+The Observable source imports `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, update to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
 
 ### FileAttachment only accepts string literals
 Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile time. You cannot dynamically construct paths like `` FileAttachment(`data/${name}.parquet`) ``. If you need multiple parquet files, each must be referenced with a literal string in the source.
@@ -100,7 +92,7 @@ Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile 
 
 ### Build requires network access
 
-Observable Framework v1.13 fetches package metadata from `registry.npmjs.org` at build time for `npm:` specifiers referenced in its client runtime. The build (`npm run build`) and dev server (`npm run dev`) both require network access. If builds fail with `fetch failed` errors, check your network connection.
+Observable Framework v1.13 fetches package metadata from `registry.npmjs.org` at build time for `npm:` specifiers referenced in its client runtime. The build (`deno task build`) and preview server (`deno task preview`) both require network access. If builds fail with `fetch failed` errors, check your network connection.
 
 ### Avoiding `npm:` protocol imports
 
@@ -178,14 +170,6 @@ unnest(results).stats.avgTime
 unnest(results).stats.avgTime AS avgTime
 ```
 
-### GitHub Pages deployment
-
-- Deployed automatically via GitHub Actions (`.github/workflows/deploy.yml`) on push to `main`
-- The workflow runs `npm run data` + `npm run build` and deploys `dist/` using `actions/deploy-pages`
-- The `base` option in `observablehq.config.js` must match the deployment path (e.g., `/repo-name/` for project sites)
-- GitHub Pages must be configured to deploy from **GitHub Actions** (not a branch) in the repo settings under Pages > Source
-- Observable Framework uses relative paths (`./`) in the HTML output, so the `base` config mainly affects the framework's internal routing
-
 ### DuckDB CLI for Parquet conversion
 
 The project uses DuckDB CLI (`duckdb`) for the JSON-to-Parquet conversion step, not the Node.js bindings. The Node.js `duckdb` / `duckdb-async` packages have native binding issues on some platforms. The CLI is more reliable:
@@ -209,8 +193,7 @@ Install: download from https://github.com/duckdb/duckdb/releases
 ├── dist/                        # Built Observable site (served by Revolution)
 ├── scripts/
 │   ├── generate-fixtures.js     # Fake data generator
-│   ├── json-to-parquet.sql      # DuckDB conversion (used by npm run parquet)
-│   └── json-to-parquet.js       # Alternative Node.js conversion (requires duckdb-async)
+│   └── json-to-parquet.sql      # DuckDB conversion (used by deno task parquet)
 ├── src/
 │   ├── data/
 │   │   └── benchmarks.parquet   # Parquet file for Observable FileAttachment
@@ -220,8 +203,7 @@ Install: download from https://github.com/duckdb/duckdb/releases
 │       └── deploy.yaml          # Deno Deploy CI/CD workflow
 ├── main.tsx                     # Revolution server entry point
 ├── deno.json                    # Deno configuration
-├── observablehq.config.js       # Observable Framework config
-└── package.json                 # npm dependencies for Observable build
+└── observablehq.config.js       # Observable Framework config
 ```
 
 ## Production Migration Notes
@@ -234,7 +216,7 @@ The `generate-fixtures.js` script produces synthetic data. In production, replac
 - The current single-page dashboard works for a few hundred benchmark runs. For thousands, add pagination or date-range filtering to limit query scope.
 
 ### GitHub Actions integration
-The deploy workflow (`.github/workflows/deploy.yml`) already handles the full pipeline: install DuckDB CLI, `npm run data`, `npm run build`, deploy `dist/` to Pages. When adding real benchmark CI, add a separate workflow that runs benchmarks, outputs JSON files, commits them to the repo, and the deploy workflow will pick them up on push.
+The deploy workflow (`.github/workflows/deploy.yaml`) already handles the full pipeline: install DuckDB CLI, `deno task data`, `deno task build`, deploy to Deno Deploy. When adding real benchmark CI, add a separate workflow that runs benchmarks, outputs JSON files, commits them to the repo, and the deploy workflow will pick them up on push.
 
 ### Multi-page dashboards
 Observable Framework supports file-based routing. Add more `.md` files to `src/` for additional pages (e.g., `src/trends.md`, `src/compare.md`). Configure navigation in `observablehq.config.js`:
@@ -260,7 +242,7 @@ The `query()` helper in `index.md` creates a new connection per query and closes
 ### Error handling
 The POC has no error handling for DuckDB WASM initialization failures or missing parquet files. In production, wrap the initialization in try/catch and show a user-friendly message. Common failure modes:
 - Browser doesn't support WebAssembly (very old browsers)
-- Parquet file fails to load (404, CORS issues on GitHub Pages)
+- Parquet file fails to load (404, CORS issues)
 - DuckDB WASM bundle fails to download (ad blockers sometimes block `.wasm` files)
 
 ### Incremental data updates
