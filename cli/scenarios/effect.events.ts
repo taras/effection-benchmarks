@@ -1,22 +1,24 @@
 /**
  * Effect events benchmark scenario.
  *
- * Ported from upstream:
- * https://github.com/thefrontside/effection/blob/v4/tasks/bench/scenarios/effect.events.ts
+ * Uses native EventTarget with Effect's Stream.fromEventListener for
+ * fair comparison with other event benchmarks.
  *
  * @module
  */
 
-import { Deferred, Effect, Queue, Scope } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 
 /**
  * Description of this benchmark scenario for the dashboard.
  */
 export const description = `
-Measures Effect-TS event handling using unbounded Queues. Creates a recursive
-chain of forked fibers that propagate queue messages through nested scopes.
-Tests fiber forking overhead, Queue operations, and scoped resource cleanup.
+Measures Effect-TS event handling with native EventTarget. Uses
+Stream.fromEventListener to create recursive event listeners that propagate
+events through a nested chain. Tests Stream subscription overhead, fiber
+forking, and scoped resource cleanup with native browser-like events.
 `.trim();
+
 import { call, type Operation } from "effection";
 import type { Scenario } from "../harness/types.ts";
 
@@ -25,51 +27,53 @@ import type { Scenario } from "../harness/types.ts";
  */
 const effectRun = (depth: number): Effect.Effect<void> =>
   Effect.gen(function* () {
-    const target = yield* Queue.unbounded<void>();
+    const target = new EventTarget();
 
     // Spawn recursive listener
-    yield* Effect.fork(recurse(target, depth));
+    const fiber = yield* Effect.fork(recurse(target, depth));
 
-    // Dispatch events
+    // Ensure listeners are registered before dispatching
+    yield* Effect.yieldNow();
+
+    // Dispatch 100 events (same as other benchmarks)
     for (let i = 0; i < 100; i++) {
       yield* Effect.yieldNow();
-      yield* Queue.offer(target, undefined);
+      target.dispatchEvent(new Event("foo"));
     }
 
     yield* Effect.yieldNow();
-    yield* Queue.shutdown(target);
-  }).pipe(Effect.scoped);
+
+    // Interrupt the fiber to trigger cleanup
+    yield* Fiber.interrupt(fiber);
+  });
 
 /**
- * Recursive Effect event listener chain.
+ * Recursive Effect event listener chain using Stream.fromEventListener.
  */
 function recurse(
-  target: Queue.Queue<void>,
+  target: EventTarget,
   depth: number,
-): Effect.Effect<void, never, Scope.Scope> {
+): Effect.Effect<void> {
   return Effect.gen(function* () {
-    if (depth > 1) {
-      const subTarget = yield* Queue.unbounded<void>();
-      yield* Effect.fork(recurse(subTarget, depth - 1));
+    // Create a stream from native EventTarget
+    const eventStream = Stream.fromEventListener<Event>(target, "foo");
 
-      // Forward events
-      yield* Effect.fork(
-        Effect.gen(function* () {
-          while (true) {
-            yield* Queue.take(target);
-            yield* Queue.offer(subTarget, undefined);
-          }
-        }).pipe(Effect.catchAll(() => Effect.void)),
+    if (depth > 1) {
+      const subTarget = new EventTarget();
+      const subFiber = yield* Effect.fork(recurse(subTarget, depth - 1));
+
+      // Ensure sub-listener is registered
+      yield* Effect.yieldNow();
+
+      // Forward events to sub-target
+      yield* Stream.runForEach(eventStream, () =>
+        Effect.sync(() => subTarget.dispatchEvent(new Event("foo")))
+      ).pipe(
+        Effect.onInterrupt(() => Fiber.interrupt(subFiber))
       );
     } else {
       // Bottom - just consume events
-      yield* Effect.fork(
-        Effect.gen(function* () {
-          while (true) {
-            yield* Queue.take(target);
-          }
-        }).pipe(Effect.catchAll(() => Effect.void)),
-      );
+      yield* Stream.runForEach(eventStream, () => Effect.void);
     }
   });
 }
