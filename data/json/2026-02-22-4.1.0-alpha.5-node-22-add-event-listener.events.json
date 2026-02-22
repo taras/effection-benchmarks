@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.5",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-02-22T21:14:38.802Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "stats": {
+        "avgTime": 0.9629792000000009,
+        "minTime": 0.7989579999999705,
+        "maxTime": 1.6723749999999882,
+        "stdDev": 0.24299073055480636,
+        "p50": 0.8815830000000346,
+        "p95": 1.6723749999999882,
+        "p99": 1.6723749999999882
+      }
+    }
+  ]
+}

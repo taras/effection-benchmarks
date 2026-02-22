@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "3.6.1",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-02-22T21:12:35.550Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "async-await.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "async-await",
+      "stats": {
+        "avgTime": 0.25155409999999845,
+        "minTime": 0.07441699999998264,
+        "maxTime": 1.47524999999996,
+        "stdDev": 0.4091044820325001,
+        "p50": 0.1053330000000301,
+        "p95": 1.47524999999996,
+        "p99": 1.47524999999996
+      }
+    }
+  ]
+}

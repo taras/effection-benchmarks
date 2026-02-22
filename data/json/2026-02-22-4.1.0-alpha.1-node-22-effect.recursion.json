@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.1",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-02-22T21:13:33.421Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "effect.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "effect",
+      "stats": {
+        "avgTime": 0.7333251000000075,
+        "minTime": 0.45116700000005494,
+        "maxTime": 0.9501669999999649,
+        "stdDev": 0.173957421990805,
+        "p50": 0.76724999999999,
+        "p95": 0.9501669999999649,
+        "p99": 0.9501669999999649
+      }
+    }
+  ]
+}

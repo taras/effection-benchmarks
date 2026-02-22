@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.5",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-02-22T21:14:38.459Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "async-await.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "async-await",
+      "stats": {
+        "avgTime": 0.13859590000001276,
+        "minTime": 0.06045900000003712,
+        "maxTime": 0.3018329999999878,
+        "stdDev": 0.07923191219633433,
+        "p50": 0.08712500000001455,
+        "p95": 0.3018329999999878,
+        "p99": 0.3018329999999878
+      }
+    }
+  ]
+}
