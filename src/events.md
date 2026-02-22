@@ -1,10 +1,20 @@
-# Effection Performance Dashboard
+# Events Benchmarks
 
-This dashboard tracks benchmark performance across releases, runtimes, and scenarios for the [Effection](https://frontside.com/effection) structured concurrency library compared to other async patterns.
+Compare event handling and subscription management performance across libraries.
 
-**Benchmarks:**
-- [Recursion](/recursion) - Nested async operations overhead
-- [Events](/events) - Event handling performance
+**Libraries compared:** `effection`, `rxjs`, `effect`, `addEventListener`
+
+## Source Code
+
+View the benchmark implementations on GitHub:
+
+- [effection](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection.events.ts)
+- [rxjs](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/rxjs.events.ts)
+- [effect](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effect.events.ts)
+- [addEventListener](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/add-event-listener.events.ts)
+
+---
+
 
 ```js
 import * as Plot from "@observablehq/plot";
@@ -32,13 +42,12 @@ const db = new duckdb.AsyncDuckDB(logger, worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
 
-// Load the parquet file from the API (dynamically generated server-side)
 const parquetBuffer = await fetch("/api/benchmarks.parquet").then(r => r.arrayBuffer());
 await db.registerFileBuffer("benchmarks.parquet", new Uint8Array(parquetBuffer));
 const conn = await db.connect();
 await conn.query("CREATE TABLE benchmarks AS SELECT * FROM parquet_scan('benchmarks.parquet')");
 
-// Register semver sorting macro - converts version strings to sortable 6-element integer lists
+// Register semver sorting macro
 await conn.query(`
   CREATE OR REPLACE MACRO semver(v) AS (
     WITH parts AS (
@@ -74,7 +83,6 @@ await conn.query(`
 ```
 
 ```js
-// Helper to run SQL and get array of objects
 async function query(sql) {
   const c = await db.connect();
   try {
@@ -86,9 +94,14 @@ async function query(sql) {
 }
 ```
 
+
 ```js
 // Get available runtimes from the data
-const runtimes = await query(`SELECT DISTINCT runtime FROM benchmarks ORDER BY runtime`);
+const runtimes = await query(`
+  SELECT DISTINCT runtime FROM benchmarks 
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  ORDER BY runtime
+`);
 const runtimeOptions = runtimes.map(r => r.runtime);
 const runtimeInput = Inputs.select(runtimeOptions, {label: "Runtime", value: runtimeOptions[0] || "deno"});
 const runtime = Generators.input(runtimeInput);
@@ -96,35 +109,27 @@ const runtime = Generators.input(runtimeInput);
 
 <div class="card">${runtimeInput}</div>
 
-## Summary: All Libraries Compared
+## Library Comparison (Latest Release)
 
-Average latency for each library across all benchmark scenarios (latest release).
+Average latency comparison across all libraries for the latest Effection release.
 
 ```js
 const latestRelease = await query(`
-  SELECT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC LIMIT 1
+  SELECT releaseTag FROM benchmarks 
+  WHERE scenario LIKE '%.events'
+  ORDER BY semver(releaseTag) DESC LIMIT 1
 `);
 const releaseTag = latestRelease[0]?.releaseTag || "unknown";
 ```
 
 ```js
-const summaryData = await query(`
-  SELECT 
-    benchmarkName,
-    scenario,
-    CASE 
-      WHEN scenario LIKE '%.recursion' THEN 'recursion'
-      WHEN scenario LIKE '%.events' THEN 'events'
-      ELSE 'other'
-    END AS scenarioType,
-    avgTime,
-    p50,
-    p95,
-    p99
+const comparisonData = await query(`
+  SELECT benchmarkName, avgTime, p50, p95, p99, stdDev
   FROM benchmarks
-  WHERE runtime = '${runtime}'
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+    AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
-  ORDER BY scenarioType, avgTime ASC
+  ORDER BY avgTime ASC
 `);
 ```
 
@@ -132,18 +137,16 @@ const summaryData = await query(`
 
 ```js
 display(Plot.plot({
-  title: `Library Comparison (${runtime})`,
+  title: `Average Latency by Library (${runtime})`,
   width,
   height: 400,
   x: {label: "Library"},
-  y: {label: "Avg Time (ms)", grid: true},
-  fx: {label: "Scenario Type"},
+  y: {label: "Time (ms)", grid: true},
   color: {legend: true, scheme: "tableau10"},
   marks: [
-    Plot.barY(summaryData, {
+    Plot.barY(comparisonData, {
       x: "benchmarkName",
       y: "avgTime",
-      fx: "scenarioType",
       fill: "benchmarkName",
       sort: {x: "y"},
       tip: true
@@ -153,71 +156,51 @@ display(Plot.plot({
 }))
 ```
 
----
-
-## Effection Performance Over Releases
-
-Track how Effection's performance has evolved across releases.
+### Percentile Comparison
 
 ```js
-const scenarioInput = Inputs.select(["recursion", "events"], {label: "Scenario", value: "recursion"});
-const scenario = Generators.input(scenarioInput);
-```
-
-<div class="card">${scenarioInput}</div>
-
-```js
-const effectionData = await query(`
-  SELECT releaseTag, avgTime, p50, p95, p99
-  FROM benchmarks
-  WHERE benchmarkName = 'effection'
-    AND scenario = 'effection.${scenario}'
-    AND runtime = '${runtime}'
-  ORDER BY semver(releaseTag)
-`);
+// Reshape data for grouped bar chart
+const percentileData = comparisonData.flatMap(d => [
+  {library: d.benchmarkName, metric: "avg", value: d.avgTime},
+  {library: d.benchmarkName, metric: "p50", value: d.p50},
+  {library: d.benchmarkName, metric: "p95", value: d.p95},
+  {library: d.benchmarkName, metric: "p99", value: d.p99},
+]);
 ```
 
 ```js
 display(Plot.plot({
-  title: `Effection ${scenario} Latency Over Releases (${runtime})`,
+  title: `Percentile Comparison (${runtime})`,
   width,
   height: 400,
-  x: {label: "Release", type: "point"},
+  x: {label: "Library"},
   y: {label: "Time (ms)", grid: true},
+  fx: {label: "Metric"},
+  color: {legend: true, scheme: "tableau10"},
   marks: [
-    Plot.line(effectionData, {x: "releaseTag", y: "avgTime", stroke: "steelblue", strokeWidth: 2, tip: true}),
-    Plot.dot(effectionData, {x: "releaseTag", y: "avgTime", fill: "steelblue"}),
-    Plot.line(effectionData, {x: "releaseTag", y: "p50", stroke: "green", strokeWidth: 2}),
-    Plot.line(effectionData, {x: "releaseTag", y: "p95", stroke: "orange", strokeWidth: 2}),
-    Plot.line(effectionData, {x: "releaseTag", y: "p99", stroke: "red", strokeWidth: 2}),
+    Plot.barY(percentileData, {
+      x: "library",
+      y: "value",
+      fx: "metric",
+      fill: "library",
+      tip: true
+    }),
+    Plot.ruleY([0]),
   ]
 }))
 ```
 
-<div class="note">
-  <strong>Legend:</strong>
-  <span style="color: steelblue;">&#9679; avg</span> &middot;
-  <span style="color: green;">&#9679; p50</span> &middot;
-  <span style="color: orange;">&#9679; p95</span> &middot;
-  <span style="color: red;">&#9679; p99</span>
-</div>
-
 ---
 
-## All Libraries Over Releases
+## Performance Over Releases
 
-Compare how all libraries perform across Effection releases for the selected scenario.
+How each library's performance has changed across Effection releases.
 
 ```js
-// Map scenario type to all relevant scenario names
-const scenarioNames = scenario === "recursion" 
-  ? "'effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion'"
-  : "'effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events'";
-
-const allLibrariesData = await query(`
-  SELECT releaseTag, benchmarkName, avgTime
+const releaseData = await query(`
+  SELECT releaseTag, benchmarkName, avgTime, p50, p95, p99
   FROM benchmarks
-  WHERE scenario IN (${scenarioNames})
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
     AND runtime = '${runtime}'
   ORDER BY semver(releaseTag), benchmarkName
 `);
@@ -225,20 +208,20 @@ const allLibrariesData = await query(`
 
 ```js
 display(Plot.plot({
-  title: `All Libraries — ${scenario} (${runtime})`,
+  title: `Latency Over Releases (${runtime})`,
   width,
   height: 450,
   x: {label: "Release", type: "point"},
   y: {label: "Avg Time (ms)", grid: true},
   color: {legend: true, scheme: "tableau10"},
   marks: [
-    Plot.line(allLibrariesData, {
+    Plot.line(releaseData, {
       x: "releaseTag",
       y: "avgTime",
       stroke: "benchmarkName",
       strokeWidth: 2
     }),
-    Plot.dot(allLibrariesData, {
+    Plot.dot(releaseData, {
       x: "releaseTag",
       y: "avgTime",
       fill: "benchmarkName",
@@ -252,33 +235,33 @@ display(Plot.plot({
 
 ## Runtime Comparison
 
-Compare performance across runtimes for Effection.
+Compare performance across runtimes for each library (latest release).
 
 ```js
-const runtimeComparisonData = await query(`
-  SELECT runtime, scenario, avgTime, p50, p95, p99
+const runtimeCompData = await query(`
+  SELECT benchmarkName, runtime, avgTime, p50, p95, p99
   FROM benchmarks
-  WHERE benchmarkName = 'effection'
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
     AND releaseTag = '${releaseTag}'
-  ORDER BY scenario, runtime
+  ORDER BY benchmarkName, runtime
 `);
 ```
 
 ```js
 display(Plot.plot({
-  title: `Effection Runtime Comparison (release ${releaseTag})`,
+  title: `Runtime Comparison (release ${releaseTag})`,
   width,
   height: 400,
-  x: {label: "Runtime"},
+  x: {label: "Library"},
   y: {label: "Avg Time (ms)", grid: true},
-  fx: {label: "Scenario"},
-  color: {legend: true},
+  fx: {label: "Runtime"},
+  color: {legend: true, scheme: "tableau10"},
   marks: [
-    Plot.barY(runtimeComparisonData, {
-      x: "runtime",
+    Plot.barY(runtimeCompData, {
+      x: "benchmarkName",
       y: "avgTime",
-      fx: "scenario",
-      fill: "runtime",
+      fx: "runtime",
+      fill: "benchmarkName",
       tip: true
     }),
     Plot.ruleY([0]),
@@ -288,8 +271,25 @@ display(Plot.plot({
 
 ---
 
-## Explore More
+## Detailed Data
 
-- [Recursion Benchmarks](/recursion) - Deep dive into nested async operations
-- [Events Benchmarks](/events) - Deep dive into event handling performance
-- [Effection Examples](/examples) - Learn Effection patterns
+```js
+const allData = await query(`
+  SELECT releaseTag, runtime, benchmarkName, scenario, avgTime, minTime, maxTime, stdDev, p50, p95, p99
+  FROM benchmarks
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  ORDER BY semver(releaseTag), runtime, benchmarkName
+`);
+```
+
+<div style="max-height: 500px; overflow-y: auto; margin-bottom: 1rem;">
+
+```js
+display(Inputs.table(allData, { layout: "auto" }))
+```
+
+</div>
+
+---
+
+[&larr; Back to Overview](/)

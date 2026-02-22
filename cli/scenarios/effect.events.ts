@@ -8,6 +8,15 @@
  */
 
 import { Deferred, Effect, Queue, Scope } from "effect";
+
+/**
+ * Description of this benchmark scenario for the dashboard.
+ */
+export const description = `
+Measures Effect-TS event handling using unbounded Queues. Creates a recursive
+chain of forked fibers that propagate queue messages through nested scopes.
+Tests fiber forking overhead, Queue operations, and scoped resource cleanup.
+`.trim();
 import { call, type Operation } from "effection";
 import type { Scenario } from "../harness/types.ts";
 

@@ -5,8 +5,9 @@
     "jsr:@denosaurs/plug@1.0.3": "1.0.3",
     "jsr:@divy/duckdb@0.2.1": "0.2.1",
     "jsr:@divy/plug@1.0.3": "1.0.3",
-    "jsr:@effection/effection@4": "4.0.2",
+    "jsr:@effection/effection@^3.6.1": "3.6.1",
     "jsr:@frontside/configliere@0.1": "0.1.0",
+    "jsr:@frontside/continuation@0.1.6": "0.1.6",
     "jsr:@libs/xml@^7.0.3": "7.0.3",
     "jsr:@luca/esbuild-deno-loader@0.11.1": "0.11.1",
     "jsr:@standard-schema/spec@1": "1.1.0",
@@ -35,7 +36,7 @@
     "jsr:@std/streams@^1.0.17": "1.0.17",
     "npm:@duckdb/duckdb-wasm@1.33.1-dev18.0": "1.33.1-dev18.0",
     "npm:@duckdb/node-api@*": "1.4.4-r.1",
-    "npm:@effectionx/process@~0.7.2": "0.7.2_effection@4.0.2",
+    "npm:@effectionx/process@0.5": "0.5.0",
     "npm:@effectionx/task-buffer@^1.3.1": "1.3.1_effection@4.0.2",
     "npm:@observablehq/framework@1.13.3": "1.13.3_rollup@4.59.0_markdown-it@14.1.1_esbuild@0.20.2",
     "npm:@observablehq/inputs@0.12.0": "0.12.0",
@@ -86,8 +87,11 @@
         "jsr:@std/path@0.213.1"
       ]
     },
-    "@effection/effection@4.0.2": {
-      "integrity": "1a3c7ffb6fa30adfd95ad97c2ed0d17900eddbe3ea00d7e1359c9ae147b8f696"
+    "@effection/effection@3.6.1": {
+      "integrity": "bb42143de920c70be9b67ecbcecfa08c5b1f77c977b3604121b17aef91645664",
+      "dependencies": [
+        "jsr:@frontside/continuation"
+      ]
     },
     "@frontside/configliere@0.1.0": {
       "integrity": "96ce30fdad04fa72920b8f7fcd708b2dbdaafecd9955488b25be548cb78c8422",
@@ -97,6 +101,9 @@
         "npm:sprintf-js",
         "npm:ts-case-convert"
       ]
+    },
+    "@frontside/continuation@0.1.6": {
+      "integrity": "f36a3b9ccdf49f0b15778a5e11a37d91bb097f67522f17ca5fbd668560b31c17"
     },
     "@libs/xml@7.0.3": {
       "integrity": "4caad75dfec0a4dd4ad5dc87dc559d9aa25ac53f17373923a9cd006f6c8d42e6"
@@ -305,26 +312,20 @@
         "@duckdb/node-bindings-win32-x64"
       ]
     },
-    "@effectionx/node@0.2.1_effection@4.0.2": {
-      "integrity": "sha512-M8I58TMgbfyRep05/0eEwTr1PR7BJNaxLTXKaWBbaMOgW7TJawVTkx00AbL55Do3LwaDIOIxKpggqGqhtjpmOw==",
+    "@effectionx/process@0.5.0": {
+      "integrity": "sha512-s4eNMaCmJ4jrK+ZrY7lf5VEEwI5/b0h+MrkKajCI3yMuQSoHtw7jKGv3KE49HzHTB0M07ko04kIQTTXvNBSUuA==",
       "dependencies": [
-        "effection"
-      ]
-    },
-    "@effectionx/process@0.7.2_effection@4.0.2": {
-      "integrity": "sha512-LQplSjQrVmI3QbvXyCeKjDxuV4lKR2f55xHMet2xEEsoPUG4EJWkJjFCO1D+9rWrS8w8L+vpOR56/tXWNAxmOA==",
-      "dependencies": [
-        "@effectionx/node",
+        "@types/cross-spawn",
         "cross-spawn",
         "ctrlc-windows",
-        "effection",
-        "shellwords-ts"
+        "effection@3.6.1",
+        "shellwords"
       ]
     },
     "@effectionx/task-buffer@1.3.1_effection@4.0.2": {
       "integrity": "sha512-7Eu/QynLQVgUzpDxm51TEDoXx5HfpHPAFeqKeEtYJNFxVWjGJgNNxX7MqUldS6aZOef99oSfQlrHPhz5QvKefQ==",
       "dependencies": [
-        "effection"
+        "effection@4.0.2"
       ]
     },
     "@esbuild/aix-ppc64@0.20.2": {
@@ -1001,6 +1002,12 @@
     "@types/command-line-usage@5.0.4": {
       "integrity": "sha512-BwR5KP3Es/CSht0xqBcUXS3qCAUVXwpRKsV2+arxeb65atasuXG9LykC9Ab10Cw3s2raH92ZqOeILaQbsB2ACg=="
     },
+    "@types/cross-spawn@6.0.6": {
+      "integrity": "sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==",
+      "dependencies": [
+        "@types/node@24.10.13"
+      ]
+    },
     "@types/estree@1.0.8": {
       "integrity": "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="
     },
@@ -1580,6 +1587,9 @@
         "@standard-schema/spec",
         "fast-check"
       ]
+    },
+    "effection@3.6.1": {
+      "integrity": "sha512-ogsuH/cgxfOOaVUf53pYqhPJth4WhPlva0hGb4Roh6cZhttMoanMqwADkDk9ych28lKuQgntpCszbFRyRFifqg=="
     },
     "effection@4.0.2": {
       "integrity": "sha512-O8WMGP10nPuJDwbNGILcaCNWS+CvDYjcdsUSD79nWZ+WtUQ8h1MEV7JJwCSZCSeKx8+TdEaZ/8r6qPTR2o/o8w=="
@@ -2596,8 +2606,8 @@
     "shebang-regex@3.0.0": {
       "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="
     },
-    "shellwords-ts@3.0.1": {
-      "integrity": "sha512-GabK4ApLMqHFRGlpgNqg8dmtHTnYHt0WUUJkIeMd3QaDrUUBEDXHSSNi3I0PzMimg8W+I0EN4TshQxsnHv1cwg=="
+    "shellwords@1.1.1": {
+      "integrity": "sha512-LzESUkEHUuFbjaE7j8uyIjKvySfSFvCF6G4WOygjwSwQj3VuX8hr+v4M252B3twEct6XTWrrNSFu74mTlx4uAQ=="
     },
     "side-channel-list@1.0.0": {
       "integrity": "sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==",
@@ -3022,12 +3032,30 @@
     "https://deno.land/x/revolution@0.8.0/lib/server.ts": "52d613ce6e31e799ab6c24a5ab2e884f4fec83826c87fb1e8c1b1808f18216da",
     "https://deno.land/x/revolution@0.8.0/lib/sse.ts": "369762c3d964e75d48b92e6fb310326ba11bba11254385823e78da333ad9f59b",
     "https://deno.land/x/revolution@0.8.0/lib/types.ts": "1c266a2bcd9dc4d086049949525fa08415587c20952f18467017347ce1792256",
-    "https://deno.land/x/revolution@0.8.0/mod.ts": "ffae461c16d4a1bf24c2179582ab8d5c81ad0df61e4ae2fba51ef5e5bdf90345"
+    "https://deno.land/x/revolution@0.8.0/mod.ts": "ffae461c16d4a1bf24c2179582ab8d5c81ad0df61e4ae2fba51ef5e5bdf90345",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/jsx-runtime.ts": "33d6c7593ba2330f6ed74f656d0dde39dca91ab833df23f2e92be5d333037a24",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/assertions.ts": "a3e142cc30ad9530fa97edecbc94272eefdd9398d927ba18b9e79684d6335889",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/builder.ts": "097dc351238aec933104610bf4e5f1180c7961532ec96f55922b2c49a16d236b",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/island.ts": "e5121eb5ddf0bdd08e28adbd3b6934fda8fbc6f8441edd46df495cdd85339eed",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware.ts": "7e48ef017613fdd55488e4334b6027a4c41ec2a020c46df8090899f9497a32cb",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/concat.ts": "e875397258a40e8a948251876ab03945df2bb2ff67d8974a6fa299772a5ee5f5",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/dispatch.ts": "1af530a1c479fde6cc4d31f423f2fc03fc2b81f30bbb19800c3c0f478ef2a40a",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/http-responses.ts": "f59eeff4a7c754231196eb0111e1e28da952ecb65db46080f7ff86475584f472",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/island-middleware.ts": "91c482145220521adb5d39a2b68a8c5fb3c695d7bb8b02de8bb1b7635743d5a3",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/serialize-html.ts": "077c7e7364a3b5d440cc58fabb6c7a4e8559eec15be47b80d842c6901bea7718",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/middleware/serve-dir.ts": "ff062254b5483d97d711a845498f0d8b4010dcf9c321a0919ec50c06011b5e28",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/mod.ts": "0466ad5b79d6a76499f59c7f4ef941797fba496592cd5db954a3ba68b0b9362f",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/revolution.ts": "25553bcff8e9253962beec5ad6a0c5fd0b711664c0227c5a33255860c953f6da",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/route.ts": "40e8945056bdc323f585930b65cb84fddb04990052a48231f55081067f091cb9",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/server.ts": "52d613ce6e31e799ab6c24a5ab2e884f4fec83826c87fb1e8c1b1808f18216da",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/sse.ts": "369762c3d964e75d48b92e6fb310326ba11bba11254385823e78da333ad9f59b",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/lib/types.ts": "1c266a2bcd9dc4d086049949525fa08415587c20952f18467017347ce1792256",
+    "https://raw.githubusercontent.com/thefrontside/revolution/main/mod.ts": "ffae461c16d4a1bf24c2179582ab8d5c81ad0df61e4ae2fba51ef5e5bdf90345"
   },
   "workspace": {
     "dependencies": [
       "jsr:@b-fuze/deno-dom@0.1.48",
-      "jsr:@effection/effection@4",
+      "jsr:@effection/effection@^3.6.1",
       "jsr:@frontside/configliere@0.1",
       "jsr:@libs/xml@^7.0.3",
       "jsr:@luca/esbuild-deno-loader@0.11.1",
@@ -3037,7 +3065,7 @@
       "jsr:@std/path@1",
       "npm:@duckdb/duckdb-wasm@1.33.1-dev18.0",
       "npm:@duckdb/node-api@*",
-      "npm:@effectionx/process@~0.7.2",
+      "npm:@effectionx/process@0.5",
       "npm:@effectionx/task-buffer@^1.3.1",
       "npm:@observablehq/framework@1.13.3",
       "npm:@observablehq/inputs@0.12.0",
