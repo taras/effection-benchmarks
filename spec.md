@@ -348,8 +348,8 @@ Use `fail-fast: false` so all runtime combinations complete even if one fails.
 1. Check out the benchmark repository
 2. Install the appropriate runtime for the matrix entry
 3. Run `bench run --release <version> --runtime <runtime>`
-4. Generate/update Parquet from `data/json/` (e.g., `deno task parquet` or a dedicated CLI command)
-5. Commit new JSON result files to the repository
+4. Commit new JSON result files to the repository
+5. Parquet is served dynamically by the dashboard (`/api/benchmarks.parquet`); optionally generate a local Parquet artifact via `deno task parquet`
 6. Deno Deploy integrated CI builds and serves the dashboard automatically
 
 #### Variance Mitigation
