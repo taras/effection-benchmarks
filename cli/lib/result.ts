@@ -18,7 +18,7 @@ export type Result<T> =
  * Safely convert an unknown caught value to an Error.
  * Policy-compliant: narrows unknown instead of assertion.
  */
-function toError(error: unknown): Error {
+export function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
