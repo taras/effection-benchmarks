@@ -4,7 +4,19 @@ import { join } from "node:path";
 const OUTPUT_DIR = join(import.meta.dirname, "..", "data", "json");
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
-const releases = ["v4.0.0", "v4.1.0", "v4.2.0", "v4.3.0", "v4.4.0"];
+// Releases including prereleases and v4.10.0 to test semver sorting
+// Expected order: v4.0.0, v4.1.0, v4.2.0, v4.3.0, v4.4.0, v4.5.0-alpha.1, v4.5.0-beta.1, v4.5.0, v4.10.0
+const releases = [
+  "v4.0.0",
+  "v4.1.0",
+  "v4.2.0",
+  "v4.3.0",
+  "v4.4.0",
+  "v4.5.0-alpha.1",  // prerelease: should sort BEFORE v4.5.0
+  "v4.5.0-beta.1",   // prerelease: should sort after alpha, before release
+  "v4.5.0",          // release: should sort after all v4.5.0 prereleases
+  "v4.10.0",         // tests numeric sort: v4.10.0 > v4.5.0 (not lexical where "10" < "5")
+];
 const runtimes = [
   { name: "node", majorVersion: 22 },
   { name: "deno", majorVersion: 2 },
@@ -19,6 +31,10 @@ const baseTimestamps = [
   "2025-11-15T14:30:00Z",
   "2025-12-15T14:30:00Z",
   "2026-01-15T14:30:00Z",
+  "2026-02-01T14:30:00Z",  // v4.5.0-alpha.1
+  "2026-02-08T14:30:00Z",  // v4.5.0-beta.1
+  "2026-02-15T14:30:00Z",  // v4.5.0
+  "2026-03-15T14:30:00Z",  // v4.10.0
 ];
 
 // Base performance numbers per scenario (in ms)

@@ -1,31 +1,31 @@
 {
   "metadata": {
-    "releaseTag": "v4.1.0",
+    "releaseTag": "v4.10.0",
     "runtime": "node",
     "runtimeMajorVersion": 22,
-    "timestamp": "2025-10-15T14:30:00Z",
+    "timestamp": "2026-03-15T14:30:00Z",
     "runner": {
       "os": "ubuntu-22.04",
       "arch": "x86_64"
     },
-    "scenario": "events",
+    "scenario": "recursion",
     "benchmarkParams": {
       "repeat": 10,
       "warmup": 3,
-      "listeners": 50
+      "depth": 100
     }
   },
   "results": [
     {
       "name": "effection",
       "stats": {
-        "avgTime": 8.21,
-        "minTime": 6.43,
-        "maxTime": 10.77,
-        "stdDev": 1.06,
-        "p50": 8.18,
-        "p95": 9.22,
-        "p99": 8.92
+        "avgTime": 11.43,
+        "minTime": 9.75,
+        "maxTime": 13.23,
+        "stdDev": 1.31,
+        "p50": 11.58,
+        "p95": 11.82,
+        "p99": 13.74
       }
     }
   ]

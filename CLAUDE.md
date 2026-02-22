@@ -7,7 +7,7 @@ Static performance dashboard for the Effection structured concurrency library. B
 ## Architecture
 
 ```
-scripts/generate-fixtures.js     →  data/json/*.json (30 benchmark files)
+scripts/generate-fixtures.js     →  data/json/*.json (54 benchmark files)
 deno task build                  →  dist/ (Observable static site)
 deno task dev                    →  Revolution server:
                                       - serves dist/ (static Observable site)
@@ -15,7 +15,7 @@ deno task dev                    →  Revolution server:
                                       - /sitemap.xml (sitemap plugin)
 ```
 
-**Dynamic Parquet Generation**: The server generates Parquet on-demand from JSON benchmark files using DuckDB's `@duckdb/node-api` package. The Parquet is cached in memory after first generation. This eliminates the need for the DuckDB CLI during build.
+**Dynamic Parquet Generation**: The server generates Parquet on-demand from JSON benchmark files using DuckDB's `@duckdb/node-api` package. Responses are cached via the Web Cache API (`caches.open`) with a key derived from a directory hash of `data/json/*.json` (using `folder-hash`). This eliminates the need for a committed Parquet artifact at build time.
 
 **Client-side Queries**: The Observable dashboard fetches `/api/benchmarks.parquet` and queries it client-side with DuckDB WASM. All SQL queries run in the browser.
 
@@ -34,12 +34,12 @@ All commands use Deno. No Node.js or npm required.
 
 ```bash
 deno task generate        # Create fake benchmark JSON fixtures
-deno task parquet         # Convert JSON → Parquet (requires duckdb CLI)
-deno task data            # Run generate + parquet (writes directly to src/data/)
+deno task parquet         # Legacy: Convert JSON → Parquet with DuckDB CLI
+deno task data            # Legacy: Run generate + parquet
 deno task build           # Build Observable Framework site (requires network access)
 deno task preview         # Start Observable preview server
 deno task clean           # Clear Observable cache
-deno task dev             # Start Revolution server (serves dist/ + sitemap)
+deno task dev             # Start Revolution server (serves dist/ + API + sitemap)
 deno task start           # Same as dev
 deno task check           # Type check all TypeScript files
 deno task lint            # Run Deno linter
@@ -73,17 +73,13 @@ deno task fmt             # Format code with Deno formatter
 The `benchmarkParams` column stores the full `metadata.benchmarkParams` object as a JSON string. Extract values with `json_extract(benchmarkParams, '$.depth')` or `json_extract(benchmarkParams, '$.listeners')`.
 
 ### Data dimensions
-- **Releases**: v4.0.0 through v4.4.0
+- **Releases**: v4.0.0, v4.1.0, v4.2.0, v4.3.0, v4.4.0, v4.5.0-alpha.1, v4.5.0-beta.1, v4.5.0, v4.10.0
 - **Runtimes**: node, deno, playwright-chromium
 - **Scenarios**: recursion, events
 
-## Known Pitfalls
+The fixtures include prerelease versions (alpha, beta) and v4.10.0 to test semver sorting.
 
-### Semantic version sorting
-The dashboard sorts releases by `releaseTag` string (`ORDER BY releaseTag`). This works for `v4.0.0` through `v4.4.0` because alphabetical order matches version order. **This breaks for `v4.9.0` vs `v4.10.0`** (lexicographic: `v4.1` < `v4.9` but `v4.10` < `v4.9`). For production, either:
-- Add a numeric `releaseOrder` column in the Parquet conversion
-- Use `timestamp` for ordering instead of `releaseTag`
-- Parse versions in SQL: `string_split(releaseTag, '.')` and cast to integers
+## Known Pitfalls
 
 ### The `results` array supports multiple entries
 The JSON schema allows multiple entries in `results[]` (each with a `name` like `"effection"`). The `unnest(results)` in the SQL handles this correctly, but the dashboard doesn't filter by `benchmarkName`. If you add comparisons against other libraries, add a `benchmarkName` filter to queries and UI.
@@ -91,10 +87,41 @@ The JSON schema allows multiple entries in `results[]` (each with a `name` like 
 ### `@duckdb/duckdb-wasm` uses a dev release
 The Observable source imports `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, update to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
 
-### FileAttachment only accepts string literals
-Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile time. You cannot dynamically construct paths like `` FileAttachment(`data/${name}.parquet`) ``. If you need multiple parquet files, each must be referenced with a literal string in the source.
+### FileAttachment compile-time constraints
+Observable's `FileAttachment("...")` is analyzed at compile time and only supports string literals. This dashboard no longer uses `FileAttachment` for benchmark data (it fetches `/api/benchmarks.parquet`), but the rule still applies anywhere else in Observable pages.
 
 ## Key Technical Decisions & Gotchas
+
+### Semver sorting
+
+The `semver(releaseTag)` macro converts version strings to sortable 6-element integer lists:
+
+| Element | Purpose | Example (`v4.5.0-alpha.1`) |
+|---------|---------|---------------------------|
+| 1 | Major | 4 |
+| 2 | Minor | 5 |
+| 3 | Patch | 0 |
+| 4 | Prerelease flag (0=pre, 1=release) | 0 |
+| 5 | Prerelease type rank (alpha=100, beta=200, rc=300) | 100 |
+| 6 | Prerelease number | 1 |
+
+**Usage in queries:**
+```sql
+-- Sort by version
+ORDER BY semver(releaseTag)
+
+-- Get latest release (NOT MAX which is lexical)
+SELECT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC LIMIT 1
+```
+
+The macro is defined both:
+- **Server-side** (`routes/benchmarks-parquet.ts`): Pre-sorts Parquet output for optimal default ordering
+- **Client-side** (`src/index.md`): Available for all dashboard queries
+
+This correctly handles:
+- `v4.9.0` vs `v4.10.0` (numeric comparison, not lexical)
+- `v4.5.0-alpha.1` < `v4.5.0` (prereleases before release)
+- `v4.5.0-alpha.1` < `v4.5.0-beta.1` (alpha < beta)
 
 ### Build requires network access
 
@@ -139,8 +166,8 @@ const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNI
 await db.instantiate(bundle.mainModule);
 await db.open({});
 
-// Load parquet via FileAttachment
-const buf = await FileAttachment("data/benchmarks.parquet").arrayBuffer();
+// Load parquet from the Revolution API route
+const buf = await fetch("/api/benchmarks.parquet").then((r) => r.arrayBuffer());
 await db.registerFileBuffer("benchmarks.parquet", new Uint8Array(buf));
 const conn = await db.connect();
 await conn.query("CREATE TABLE benchmarks AS SELECT * FROM parquet_scan('benchmarks.parquet')");
@@ -176,13 +203,11 @@ unnest(results).stats.avgTime
 unnest(results).stats.avgTime AS avgTime
 ```
 
-### DuckDB CLI for Parquet conversion
+### Server-side DuckDB notes
 
-The project uses DuckDB CLI (`duckdb`) for the JSON-to-Parquet conversion step, not the Node.js bindings. The Node.js `duckdb` / `duckdb-async` packages have native binding issues on some platforms. The CLI is more reliable:
-```bash
-duckdb < scripts/json-to-parquet.sql
-```
-Install: download from https://github.com/duckdb/duckdb/releases
+- The production route is `routes/benchmarks-parquet.ts` and uses `@duckdb/node-api` wrapped as an Effection resource.
+- `@duckdb/duckdb-wasm` is browser-oriented and not a good fit for Deno server route workers.
+- The CLI SQL flow in `scripts/json-to-parquet.sql` is still useful as a local/legacy path, but runtime serving is now API-driven.
 
 ## File Structure
 
@@ -192,9 +217,10 @@ Install: download from https://github.com/duckdb/duckdb/releases
 ├── plugins/
 │   ├── sitemap.ts               # Sitemap plugin (generates /sitemap.xml)
 │   ├── current-request.ts       # Current request plugin
-│   └── etag.ts                  # ETag caching plugin
+│   ├── etag.ts                  # ETag caching plugin
+│   └── cache.ts                 # Web Cache API route wrapper
 ├── routes/
-│   └── benchmarks-parquet.ts    # Dynamic Parquet generation route (DuckDB)
+│   └── benchmarks-parquet.ts    # Dynamic Parquet generation route (DuckDB + cache key hashing)
 ├── data/
 │   └── json/                    # Generated benchmark JSON files
 │       └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
@@ -210,6 +236,13 @@ Install: download from https://github.com/duckdb/duckdb/releases
 ```
 
 ## Production Migration Notes
+
+### Handoff notes (recent findings)
+- Dashboard now fetches benchmark data from `/api/benchmarks.parquet`; `src/data/benchmarks.parquet` was removed from git.
+- Cache behavior is middleware-based (`plugins/cache.ts`), not embedded in the route handler.
+- Cache key is content-addressed from benchmark JSON folder state (`folder-hash` over `data/json`), so modifying fixture files invalidates cache naturally.
+- Old GitHub Actions deployment workflows were removed (`.github/workflows/deploy.yaml`, `.github/workflows/deploy.yml`); deployment uses `deno.json` `deploy` config only.
+- Type checking includes routes: `deno task check` covers `routes/**/*.ts`.
 
 ### Replace fixture data with real benchmarks
 The `generate-fixtures.js` script produces synthetic data. In production, replace this with actual benchmark output from CI. The JSON schema should remain the same — the Parquet conversion and dashboard will work without changes as long as the JSON structure matches.

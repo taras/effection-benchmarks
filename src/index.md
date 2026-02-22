@@ -34,6 +34,40 @@ const parquetBuffer = await fetch("/api/benchmarks.parquet").then(r => r.arrayBu
 await db.registerFileBuffer("benchmarks.parquet", new Uint8Array(parquetBuffer));
 const conn = await db.connect();
 await conn.query("CREATE TABLE benchmarks AS SELECT * FROM parquet_scan('benchmarks.parquet')");
+
+// Register semver sorting macro - converts version strings to sortable 6-element integer lists
+await conn.query(`
+  CREATE OR REPLACE MACRO semver(v) AS (
+    WITH parts AS (
+      SELECT string_split(ltrim(v, 'v'), '-') AS segments
+    ),
+    parsed AS (
+      SELECT
+        string_split(segments[1], '.') AS core,
+        CASE 
+          WHEN len(segments) > 1 
+          THEN list_reduce(segments[2:], (a, b) -> a || '-' || b)
+          ELSE NULL 
+        END AS prerelease
+      FROM parts
+    )
+    SELECT [
+      COALESCE(TRY_CAST(core[1] AS INTEGER), 0),
+      COALESCE(TRY_CAST(core[2] AS INTEGER), 0),
+      COALESCE(TRY_CAST(core[3] AS INTEGER), 0),
+      CASE WHEN prerelease IS NULL THEN 1 ELSE 0 END,
+      CASE 
+        WHEN prerelease IS NULL THEN 999
+        WHEN prerelease LIKE 'alpha%' OR prerelease LIKE 'a.%' THEN 100
+        WHEN prerelease LIKE 'beta%' OR prerelease LIKE 'b.%' THEN 200
+        WHEN prerelease LIKE 'rc%' THEN 300
+        ELSE 250
+      END,
+      COALESCE(TRY_CAST(regexp_extract(prerelease, '(\\d+)$', 1) AS INTEGER), 0)
+    ]
+    FROM parsed
+  )
+`);
 ```
 
 ```js
@@ -73,7 +107,7 @@ const perfOverReleases = await query(`
   SELECT releaseTag, avgTime, p50, p95, p99
   FROM benchmarks
   WHERE scenario = '${scenario}' AND runtime = '${runtime}'
-  ORDER BY releaseTag
+  ORDER BY semver(releaseTag)
 `);
 ```
 
@@ -114,7 +148,7 @@ const runtimeComparison = await query(`
   SELECT runtime, avgTime, minTime, maxTime, p50, p95, p99
   FROM benchmarks
   WHERE scenario = '${scenario}'
-    AND releaseTag = (SELECT MAX(releaseTag) FROM benchmarks)
+    AND releaseTag = (SELECT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC LIMIT 1)
   ORDER BY runtime
 `);
 ```
@@ -142,7 +176,7 @@ const allData = await query(`
   SELECT releaseTag, runtime, scenario, avgTime, minTime, maxTime, stdDev, p50, p95, p99
   FROM benchmarks
   WHERE scenario = '${scenario}'
-  ORDER BY releaseTag, runtime
+  ORDER BY semver(releaseTag), runtime
 `);
 ```
 
@@ -159,7 +193,7 @@ const allRuntimes = await query(`
   SELECT releaseTag, runtime, avgTime
   FROM benchmarks
   WHERE scenario = '${scenario}'
-  ORDER BY releaseTag, runtime
+  ORDER BY semver(releaseTag), runtime
 `);
 ```
 

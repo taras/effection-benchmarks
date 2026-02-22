@@ -1,31 +1,31 @@
 {
   "metadata": {
-    "releaseTag": "v4.3.0",
+    "releaseTag": "v4.5.0-beta.1",
     "runtime": "playwright-chromium",
     "runtimeMajorVersion": 131,
-    "timestamp": "2025-12-15T14:30:00Z",
+    "timestamp": "2026-02-08T14:30:00Z",
     "runner": {
       "os": "ubuntu-22.04",
       "arch": "x86_64"
     },
-    "scenario": "events",
+    "scenario": "recursion",
     "benchmarkParams": {
       "repeat": 10,
       "warmup": 3,
-      "listeners": 50
+      "depth": 100
     }
   },
   "results": [
     {
       "name": "effection",
       "stats": {
-        "avgTime": 11.19,
-        "minTime": 8.73,
-        "maxTime": 14.41,
-        "stdDev": 1.25,
-        "p50": 10.4,
-        "p95": 11.78,
-        "p99": 13.2
+        "avgTime": 17.8,
+        "minTime": 14.07,
+        "maxTime": 20.21,
+        "stdDev": 1.77,
+        "p50": 16.57,
+        "p95": 18.69,
+        "p99": 20.01
       }
     }
   ]

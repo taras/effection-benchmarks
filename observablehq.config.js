@@ -3,4 +3,8 @@ export default {
   root: "src",
   base: "/",
   theme: "dashboard",
+  pages: [
+    { name: "Overview", path: "/" },
+    { name: "Effection Examples", path: "/examples" },
+  ],
 };
