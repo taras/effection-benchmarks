@@ -92,20 +92,22 @@ const runtimes = await query(`SELECT DISTINCT runtime FROM benchmarks ORDER BY r
 const runtimeOptions = runtimes.map(r => r.runtime);
 const runtimeInput = Inputs.select(runtimeOptions, {label: "Runtime", value: runtimeOptions[0] || "deno"});
 const runtime = Generators.input(runtimeInput);
+
+// Get available Effection releases from the data
+const releases = await query(`SELECT DISTINCT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC`);
+const releaseOptions = releases.map(r => r.releaseTag);
+const releaseInput = Inputs.select(releaseOptions, {label: "Effection Release", value: releaseOptions[0]});
+const releaseTag = Generators.input(releaseInput);
 ```
 
-<div class="card">${runtimeInput}</div>
+<div class="grid grid-cols-2">
+  <div class="card">${runtimeInput}</div>
+  <div class="card">${releaseInput}</div>
+</div>
 
 ## Summary: All Libraries Compared
 
-Average latency for each library across all benchmark scenarios (latest release).
-
-```js
-const latestRelease = await query(`
-  SELECT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC LIMIT 1
-`);
-const releaseTag = latestRelease[0]?.releaseTag || "unknown";
-```
+Average latency for each library across all benchmark scenarios.
 
 ```js
 const summaryData = await query(`

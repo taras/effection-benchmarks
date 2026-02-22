@@ -105,22 +105,26 @@ const runtimes = await query(`
 const runtimeOptions = runtimes.map(r => r.runtime);
 const runtimeInput = Inputs.select(runtimeOptions, {label: "Runtime", value: runtimeOptions[0] || "deno"});
 const runtime = Generators.input(runtimeInput);
-```
 
-<div class="card">${runtimeInput}</div>
-
-## Library Comparison (Latest Release)
-
-Average latency comparison across all libraries for the latest Effection release.
-
-```js
-const latestRelease = await query(`
-  SELECT releaseTag FROM benchmarks 
-  WHERE scenario LIKE '%.events'
-  ORDER BY semver(releaseTag) DESC LIMIT 1
+// Get available Effection releases from the data
+const releases = await query(`
+  SELECT DISTINCT releaseTag FROM benchmarks 
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  ORDER BY semver(releaseTag) DESC
 `);
-const releaseTag = latestRelease[0]?.releaseTag || "unknown";
+const releaseOptions = releases.map(r => r.releaseTag);
+const releaseInput = Inputs.select(releaseOptions, {label: "Effection Release", value: releaseOptions[0]});
+const releaseTag = Generators.input(releaseInput);
 ```
+
+<div class="grid grid-cols-2">
+  <div class="card">${runtimeInput}</div>
+  <div class="card">${releaseInput}</div>
+</div>
+
+## Library Comparison
+
+Average latency comparison across all libraries for the selected Effection release.
 
 ```js
 const comparisonData = await query(`
@@ -235,7 +239,7 @@ display(Plot.plot({
 
 ## Runtime Comparison
 
-Compare performance across runtimes for each library (latest release).
+Compare performance across runtimes for each library.
 
 ```js
 const runtimeCompData = await query(`
