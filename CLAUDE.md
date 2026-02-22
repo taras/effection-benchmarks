@@ -70,9 +70,6 @@ The JSON schema allows multiple entries in `results[]` (each with a `name` like 
 ### `@duckdb/duckdb-wasm` is pinned to a dev release
 `package.json` installs `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, pin to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
 
-### `docs/` is a manual snapshot
-The `docs/` directory is committed for GitHub Pages but is not automatically rebuilt. After changing source code, you must run `npm run build` and copy `dist/` to `docs/` again. In production, use GitHub Actions to automate this — don't commit `docs/` at all, deploy `dist/` directly.
-
 ### FileAttachment only accepts string literals
 Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile time. You cannot dynamically construct paths like `` FileAttachment(`data/${name}.parquet`) ``. If you need multiple parquet files, each must be referenced with a literal string in the source.
 
@@ -160,9 +157,10 @@ unnest(results).stats.avgTime AS avgTime
 
 ### GitHub Pages deployment
 
+- Deployed automatically via GitHub Actions (`.github/workflows/deploy.yml`) on push to `main`
+- The workflow runs `npm run data` + `npm run build` and deploys `dist/` using `actions/deploy-pages`
 - The `base` option in `observablehq.config.js` must match the deployment path (e.g., `/repo-name/` for project sites)
-- A `.nojekyll` file is required in the deployed root — GitHub's Jekyll processor ignores directories starting with `_` (like `_node/`, `_observablehq/`)
-- The built site lives in `docs/` for serving via GitHub Pages "Deploy from branch" with `/docs` folder
+- GitHub Pages must be configured to deploy from **GitHub Actions** (not a branch) in the repo settings under Pages > Source
 - Observable Framework uses relative paths (`./`) in the HTML output, so the `base` config mainly affects the framework's internal routing
 
 ### DuckDB CLI for Parquet conversion
@@ -176,10 +174,12 @@ Install: download from https://github.com/duckdb/duckdb/releases
 ## File Structure
 
 ```
+├── .github/
+│   └── workflows/
+│       └── deploy.yml           # GitHub Actions: build + deploy to Pages
 ├── data/
 │   └── json/                    # Generated benchmark JSON files
 │       └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
-├── docs/                        # Built site for GitHub Pages
 ├── scripts/
 │   ├── generate-fixtures.js     # Fake data generator
 │   ├── json-to-parquet.sql      # DuckDB conversion (used by npm run parquet)
@@ -202,11 +202,7 @@ The `generate-fixtures.js` script produces synthetic data. In production, replac
 - The current single-page dashboard works for a few hundred benchmark runs. For thousands, add pagination or date-range filtering to limit query scope.
 
 ### GitHub Actions integration
-When adding CI automation:
-1. Run benchmarks and output JSON files
-2. Run `duckdb < scripts/json-to-parquet.sql` to create the Parquet file (writes directly to `src/data/`)
-3. Run `npm run build`
-4. Deploy `dist/` to GitHub Pages
+The deploy workflow (`.github/workflows/deploy.yml`) already handles the full pipeline: install DuckDB CLI, `npm run data`, `npm run build`, deploy `dist/` to Pages. When adding real benchmark CI, add a separate workflow that runs benchmarks, outputs JSON files, commits them to the repo, and the deploy workflow will pick them up on push.
 
 ### Multi-page dashboards
 Observable Framework supports file-based routing. Add more `.md` files to `src/` for additional pages (e.g., `src/trends.md`, `src/compare.md`). Configure navigation in `observablehq.config.js`:
