@@ -9,6 +9,7 @@
 
 import type { Operation } from "effection";
 import type { BenchmarkResult, RuntimeId } from "../schema.ts";
+import type { Workspace } from "../workspace.ts";
 import { nodeAdapter } from "./node.ts";
 import { denoAdapter } from "./deno.ts";
 import { bunAdapter } from "./bun.ts";
@@ -33,6 +34,8 @@ export interface ScenarioOpts {
     effect: string;
     co: string;
   };
+  /** Workspace with npm-installed packages */
+  workspace: Workspace;
 }
 
 /**

@@ -49,6 +49,8 @@ export interface HarnessInvokeOpts {
   runtimeMajorVersion: number;
   /** Scenario options */
   scenarioOpts: ScenarioOpts;
+  /** Working directory for subprocess (workspace path) */
+  cwd: string;
 }
 
 /**
@@ -123,8 +125,8 @@ export function* invokeHarness(opts: HarnessInvokeOpts): Operation<BenchmarkResu
   const fullArgs = [...opts.runtimeArgs, harnessPath, ...harnessArgs];
   const command = `${opts.command} ${fullArgs.join(" ")}`;
 
-  // Execute the harness subprocess
-  const result = yield* exec(command).expect();
+  // Execute the harness subprocess in the workspace directory
+  const result = yield* exec(command, { cwd: opts.cwd }).expect();
 
   // Parse JSON output
   const harnessOutput = parseHarnessOutput(result.stdout, opts.scenarioOpts.scenario);

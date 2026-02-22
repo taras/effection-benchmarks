@@ -57,6 +57,7 @@ export const nodeAdapter: RuntimeAdapter = {
       runtimeId: "node",
       runtimeMajorVersion: majorVersion,
       scenarioOpts: opts,
+      cwd: opts.workspace.path,
     });
   },
 };

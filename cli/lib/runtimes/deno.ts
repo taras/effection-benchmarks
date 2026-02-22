@@ -47,12 +47,14 @@ export const denoAdapter: RuntimeAdapter = {
     const majorVersion = parseMajorVersion(`deno ${versionStr}`);
 
     // Deno needs -A for all permissions and runs TypeScript natively
+    // The workspace has deno.json with nodeModulesDir: "auto" for bare specifier resolution
     return yield* invokeHarness({
       command: "deno",
       runtimeArgs: ["run", "-A"],
       runtimeId: "deno",
       runtimeMajorVersion: majorVersion,
       scenarioOpts: opts,
+      cwd: opts.workspace.path,
     });
   },
 };

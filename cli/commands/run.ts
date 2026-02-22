@@ -2,26 +2,25 @@
  * run command implementation.
  *
  * Runs benchmarks for a specific Effection release across runtimes.
+ * Creates isolated workspaces with npm-installed packages for each runtime.
  *
  * @module
  */
 
 import type { Operation } from "effection";
-import { spawn } from "effection";
-import { useTaskBuffer } from "@effectionx/task-buffer";
 import { z } from "zod";
 import { Configliere } from "configliere";
 import {
   RuntimeIdSchema,
-  RUNTIMES,
-  SCHEMA_VERSION,
+  SCENARIOS,
   type BenchmarkResult,
   type RuntimeId,
+  type ScenarioName,
   validateBenchmarkConfig,
 } from "../lib/schema.ts";
 import { wrapResult, failures, successes, type Result } from "../lib/result.ts";
-import { withTempDir } from "../lib/temp-dir.ts";
 import { getAdapter } from "../lib/runtimes/mod.ts";
+import { useWorkspace, type Workspace } from "../lib/workspace.ts";
 
 /**
  * Configliere spec for run command options.
@@ -64,6 +63,12 @@ const configliere = new Configliere({
     schema: z.string().optional(),
     description: "co version override",
   },
+  "cache-workspace": {
+    schema: z.boolean(),
+    default: false,
+    description: "Cache npm install between runs (faster dev iteration)",
+    cli: { switch: true },
+  },
   "fail-fast": {
     schema: z.boolean(),
     default: false,
@@ -95,11 +100,12 @@ function loadConfig(): {
 }
 
 /**
- * Run benchmarks for a single runtime.
+ * Run all scenarios for a single runtime with a pre-created workspace.
  */
 function* runForRuntime(
   runtime: RuntimeId,
   release: string,
+  workspace: Workspace,
   opts: {
     repeat: number;
     depth: number;
@@ -117,23 +123,27 @@ function* runForRuntime(
 
   // Get runtime version
   const version = yield* adapter.version();
-  console.log(`  ${runtime} ${version}: starting benchmarks...`);
+  console.log(`  ${runtime} ${version}: running ${SCENARIOS.length} scenarios...`);
 
-  // Run all scenarios for this runtime
   const results: BenchmarkResult[] = [];
 
-  // For now, just run effection.recursion as a smoke test
-  // TODO: Run all scenarios
-  const result = yield* adapter.runScenario({
-    releaseTag: release,
-    scenario: "effection.recursion",
-    repeat: opts.repeat,
-    warmup: opts.warmup,
-    depth: opts.depth,
-    comparisonVersions: opts.comparisonVersions,
-  });
+  // Run ALL scenarios
+  for (let i = 0; i < SCENARIOS.length; i++) {
+    const scenario = SCENARIOS[i] as ScenarioName;
 
-  results.push(result);
+    const result = yield* adapter.runScenario({
+      releaseTag: release,
+      scenario,
+      repeat: opts.repeat,
+      warmup: opts.warmup,
+      depth: opts.depth,
+      comparisonVersions: opts.comparisonVersions,
+      workspace,
+    });
+
+    results.push(result);
+    console.log(`    [${i + 1}/${SCENARIOS.length}] ${scenario}`);
+  }
 
   console.log(`  ${runtime} ${version}: completed ${results.length} scenario(s)`);
 
@@ -174,6 +184,7 @@ export function* runCommand(args: string[]): Operation<number> {
   const config = parseResult.config;
   const release = config.release;
   const runtimes = config.runtime as RuntimeId[];
+  const useCache = config["cache-workspace"] as boolean;
 
   // Load comparison library versions
   const defaultVersions = loadConfig();
@@ -185,31 +196,40 @@ export function* runCommand(args: string[]): Operation<number> {
 
   console.log(`\nRunning benchmarks for Effection ${release}`);
   console.log(`Runtimes: ${runtimes.join(", ")}`);
+  console.log(`Scenarios: ${SCENARIOS.length} total`);
   console.log(`Options: repeat=${config.repeat}, depth=${config.depth}, warmup=${config.warmup}`);
   console.log(`Comparison libs: rxjs@${comparisonVersions.rxjs}, effect@${comparisonVersions.effect}, co@${comparisonVersions.co}`);
+  if (useCache) {
+    console.log(`Workspace caching: enabled`);
+  }
   console.log();
 
-  // Run benchmarks with bounded concurrency
-  const buffer = yield* useTaskBuffer(2);
+  // Create workspace ONCE before running runtimes in parallel
+  // This avoids race conditions when multiple runtimes try to create the same cache
+  console.log(`Creating workspace for Effection ${release}...`);
+  const workspace = yield* useWorkspace({
+    effectionVersion: release,
+    comparisonVersions,
+    useCache,
+  });
+  console.log(`Workspace ready at: ${workspace.path}\n`);
+
+  // Run runtimes sequentially for accurate benchmark measurements
+  // (parallel execution causes CPU contention and measurement noise)
   const results: Result<BenchmarkResult[]>[] = [];
 
   for (const runtime of runtimes) {
-    yield* buffer.spawn(function* () {
-      const r = yield* wrapResult(
-        runtime,
-        runForRuntime(runtime, release, {
-          repeat: config.repeat,
-          depth: config.depth,
-          warmup: config.warmup,
-          comparisonVersions,
-        }),
-      );
-      results.push(r);
-    });
+    const r = yield* wrapResult(
+      runtime,
+      runForRuntime(runtime, release, workspace, {
+        repeat: config.repeat,
+        depth: config.depth,
+        warmup: config.warmup,
+        comparisonVersions,
+      }),
+    );
+    results.push(r);
   }
-
-  // Wait for all runtimes to complete
-  yield* buffer;
 
   // Process results
   const successfulResults = successes(results);

@@ -51,6 +51,7 @@ export const bunAdapter: RuntimeAdapter = {
       runtimeId: "bun",
       runtimeMajorVersion: majorVersion,
       scenarioOpts: opts,
+      cwd: opts.workspace.path,
     });
   },
 };
