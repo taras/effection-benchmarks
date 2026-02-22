@@ -63,7 +63,7 @@ bench run --release <version> --runtime <runtime> [--repeat <n>] [--depth <n>] [
 
 Options:
 - `--release` (required): Effection npm version to benchmark (e.g., `4.1.0`). Do not include the `v` prefix.
-- `--runtime` (required, repeatable): Runtime to benchmark against. Valid values: `node`, `deno`, `bun`. Playwright browser runtimes (`playwright-chromium`, `playwright-firefox`, `playwright-webkit`) are deferred to Phase 2.
+- `--runtime` (required, repeatable): Runtime to benchmark against. Valid values: `node`, `deno`, `bun`. Playwright browser runtimes are planned for Phase 2 (see [Future Work](#future-work)).
 - `--repeat`: Number of benchmark iterations (default: 10)
 - `--depth`: Recursion depth for benchmark scenarios (default: 100)
 - `--warmup`: Number of warmup runs to discard (default: 3)
@@ -186,13 +186,21 @@ Scenarios are ported from upstream `tasks/bench/scenarios/` with these changes:
 | Worker isolation | `scoped()` isolation + subprocess boundary |
 | Imports from `../../../mod.ts` | Imports from `effection` (npm) |
 
+### Effection Version Compatibility
+
+The benchmark scenarios are designed to run across a range of Effection versions installed from npm.
+
+- Confirmed compatible across Effection 3.x and 4.x for the APIs used by the scenarios: `call()`, `spawn()`, `sleep()`, `on()`, `each()`/`each.next()`, and `Task.halt()`.
+- The downstream harness should not require version-specific scenario files for Effection 3.x/4.x.
+- If a future major version introduces breaking API changes, add version-specific scenario variants (e.g., `cli/scenarios/v5/*`) and select them based on `--release`.
+
 ### Measurement Pattern
 
 In-process measurement uses `performance.now()` and wraps each run in `scoped()` to ensure cleanup and prevent effects from escaping scope.
 
 ### Phase 2
 
-Playwright runtimes (`playwright-chromium`, `playwright-firefox`, `playwright-webkit`) are deferred to Phase 2.
+See [Future Work](#future-work) for Playwright browser runtimes planned for Phase 2.
 
 ---
 
@@ -327,7 +335,7 @@ The workflow uses a matrix strategy to run benchmarks across runtimes:
 - Deno (latest stable)
 - Bun (latest stable)
 
-Playwright browser runtimes (Chromium, Firefox, WebKit) are deferred to Phase 2.
+Playwright browser runtimes are planned for Phase 2 (see [Future Work](#future-work)).
 
 Use `fail-fast: false` so all runtime combinations complete even if one fails.
 
@@ -543,15 +551,13 @@ export function getAdapter(id: RuntimeId): RuntimeAdapter {
 
 ---
 
-## Open Research Items
+## Future Work
 
-The following items need investigation before or during implementation:
+### Playwright Browser Runtimes
 
-1. **Playwright benchmark accuracy** (Phase 2): Validate that `performance.now()` inside `page.evaluate()` gives sufficient resolution for Effection's benchmark scenarios across all three browser engines. Specifically test Firefox with timer precision disabled and WebKit's actual resolution.
+Phase 2 will add browser runtimes (`playwright-chromium`, `playwright-firefox`, `playwright-webkit`).
 
-2. **Effection API compatibility across versions**: If Effection v5 introduces breaking API changes, the benchmark scenarios may need version-specific variants. Monitor for API changes in:
-   - `spawn()`, `scoped()`, `call()` signatures
-   - Stream/channel APIs
-   - `main()` entry point
-
-> **Note:** Playwright browser runtimes are deferred to Phase 2. The initial implementation covers Deno, Node 22, and Bun only.
+Research required before implementation:
+- Validate that `performance.now()` inside `page.evaluate()` gives sufficient resolution for Effection's benchmark scenarios across all three browser engines
+- Test Firefox under reduced timer precision / fingerprinting-resistance settings
+- Verify WebKit's actual timer resolution
