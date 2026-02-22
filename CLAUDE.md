@@ -2,17 +2,25 @@
 
 ## Project Overview
 
-Static performance dashboard for the Effection structured concurrency library. Benchmark JSON files are converted to Parquet, and an Observable Framework site queries them client-side with DuckDB WASM and renders charts with Observable Plot. No backend — everything is static files deployable to GitHub Pages.
+Static performance dashboard for the Effection structured concurrency library. Benchmark JSON files are converted to Parquet, and an Observable Framework site queries them client-side with DuckDB WASM and renders charts with Observable Plot. The site is served via Revolution framework on Deno Deploy with sitemap integration for the Effection ecosystem.
 
 ## Architecture
 
 ```
 scripts/generate-fixtures.js     →  data/json/*.json (30 benchmark files)
 scripts/json-to-parquet.sql      →  src/data/benchmarks.parquet (flattened)
-npm run build                    →  dist/ (static site)
+npm run build                    →  dist/ (Observable static site)
+deno task dev                    →  Revolution server (serves dist/ + /sitemap.xml)
 ```
 
 All SQL queries run client-side in the browser via DuckDB WASM. The Parquet file is loaded into an in-memory DuckDB instance using `FileAttachment().arrayBuffer()`.
+
+### Deployment
+
+- **URL**: https://effection-benchmarks.taras.deno.net
+- **Platform**: Deno Deploy
+- **Entry point**: `main.tsx` (Revolution server)
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yaml`)
 
 ## Commands
 
@@ -23,6 +31,16 @@ npm run data              # Run generate + parquet (writes directly to src/data/
 npm run build             # Build Observable Framework site (requires network access)
 npm run dev               # Start Observable preview server
 npm run clean             # Clear Observable cache
+```
+
+### Deno/Revolution Commands
+
+```bash
+deno task dev             # Start Revolution server (serves dist/ + sitemap)
+deno task start           # Same as dev
+deno task check           # Type check all TypeScript files
+deno task lint            # Run Deno linter
+deno task fmt             # Format code with Deno formatter
 ```
 
 ## Data Schema
@@ -69,6 +87,11 @@ The JSON schema allows multiple entries in `results[]` (each with a `name` like 
 
 ### `@duckdb/duckdb-wasm` is pinned to a dev release
 `package.json` installs `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, pin to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
+
+### `docs/` is a manual snapshot
+The `docs/` directory is committed for GitHub Pages but is not automatically rebuilt. After changing source code, you must run `npm run build` and copy `dist/` to `docs/` again. In production, use GitHub Actions to automate this — don't commit `docs/` at all, deploy `dist/` directly.
+
+**Note**: With the new Deno Deploy architecture, `docs/` is no longer used. The site deploys directly from `main.tsx` which serves `dist/`.
 
 ### FileAttachment only accepts string literals
 Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile time. You cannot dynamically construct paths like `` FileAttachment(`data/${name}.parquet`) ``. If you need multiple parquet files, each must be referenced with a literal string in the source.
@@ -174,12 +197,16 @@ Install: download from https://github.com/duckdb/duckdb/releases
 ## File Structure
 
 ```
-├── .github/
-│   └── workflows/
-│       └── deploy.yml           # GitHub Actions: build + deploy to Pages
+├── context/
+│   └── request.ts               # CurrentRequest Effection context
+├── plugins/
+│   ├── sitemap.ts               # Sitemap plugin (generates /sitemap.xml)
+│   ├── current-request.ts       # Current request plugin
+│   └── etag.ts                  # ETag caching plugin
 ├── data/
 │   └── json/                    # Generated benchmark JSON files
 │       └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
+├── dist/                        # Built Observable site (served by Revolution)
 ├── scripts/
 │   ├── generate-fixtures.js     # Fake data generator
 │   ├── json-to-parquet.sql      # DuckDB conversion (used by npm run parquet)
@@ -188,8 +215,13 @@ Install: download from https://github.com/duckdb/duckdb/releases
 │   ├── data/
 │   │   └── benchmarks.parquet   # Parquet file for Observable FileAttachment
 │   └── index.md                 # Dashboard page (all charts and queries)
+├── .github/
+│   └── workflows/
+│       └── deploy.yaml          # Deno Deploy CI/CD workflow
+├── main.tsx                     # Revolution server entry point
+├── deno.json                    # Deno configuration
 ├── observablehq.config.js       # Observable Framework config
-└── package.json
+└── package.json                 # npm dependencies for Observable build
 ```
 
 ## Production Migration Notes

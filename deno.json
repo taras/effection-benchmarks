@@ -1,0 +1,41 @@
+{
+  "tasks": {
+    "dev": "deno run -A main.tsx",
+    "start": "deno run -A main.tsx",
+    "check": "deno check main.tsx routes/**/*.ts plugins/**/*.ts context/**/*.ts",
+    "lint": "deno lint",
+    "fmt": "deno fmt"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom.iterable", "dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "revolution"
+  },
+  "imports": {
+    "effection": "jsr:@effection/effection@^3.6.1",
+    "revolution": "https://deno.land/x/revolution@0.8.0/mod.ts",
+    "revolution/jsx-runtime": "https://deno.land/x/revolution@0.8.0/jsx-runtime.ts",
+    "@libs/xml": "jsr:@libs/xml@^7.0.3",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/path": "jsr:@std/path@1",
+    "@std/http": "jsr:@std/http@1",
+    "path-to-regexp": "npm:path-to-regexp@8.2.0",
+    "esbuild": "npm:esbuild@0.24.2",
+    "esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11.1",
+    "deno-dom": "jsr:@b-fuze/deno-dom@0.1.48",
+    "deno-dom/wasm": "https://deno.land/x/deno_dom@v0.1.41/deno-dom-wasm.ts",
+    "deno-dom/constructor-lock": "https://deno.land/x/deno_dom@v0.1.41/src/constructor-lock.ts",
+    "hast": "npm:@types/hast@^3.0.0",
+    "hast-util-to-html": "npm:hast-util-to-html@9.0.0",
+    "hastx": "npm:hastx@0.0.11"
+  },
+  "fmt": {
+    "exclude": ["dist", "node_modules", "data"]
+  },
+  "lint": {
+    "exclude": ["dist", "node_modules", "data"],
+    "rules": {
+      "exclude": ["prefer-const", "require-yield"]
+    }
+  }
+}
