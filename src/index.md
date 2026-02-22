@@ -105,28 +105,18 @@ const releaseTag = Generators.input(releaseInput);
   <div class="card">${releaseInput}</div>
 </div>
 
-## Summary: All Libraries Compared
+## Recursion: Library Comparison
 
-Average latency for each library across all benchmark scenarios.
+Deeply nested async operations — measures structured concurrency overhead.
 
 ```js
-const summaryData = await query(`
-  SELECT 
-    benchmarkName,
-    scenario,
-    CASE 
-      WHEN scenario LIKE '%.recursion' THEN 'recursion'
-      WHEN scenario LIKE '%.events' THEN 'events'
-      ELSE 'other'
-    END AS scenarioType,
-    avgTime,
-    p50,
-    p95,
-    p99
+const recursionData = await query(`
+  SELECT benchmarkName, avgTime, p50, p95, p99
   FROM benchmarks
-  WHERE runtime = '${runtime}'
+  WHERE scenario LIKE '%.recursion'
+    AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
-  ORDER BY scenarioType, avgTime ASC
+  ORDER BY avgTime ASC
 `);
 ```
 
@@ -134,18 +124,16 @@ const summaryData = await query(`
 
 ```js
 display(Plot.plot({
-  title: `Library Comparison (${runtime})`,
+  title: `Recursion Benchmark (${runtime})`,
   width,
-  height: 400,
+  height: 350,
   x: {label: "Library"},
   y: {label: "Avg Time (ms)", grid: true},
-  fx: {label: "Scenario Type"},
   color: {legend: true, scheme: "tableau10"},
   marks: [
-    Plot.barY(summaryData, {
+    Plot.barY(recursionData, {
       x: "benchmarkName",
       y: "avgTime",
-      fx: "scenarioType",
       fill: "benchmarkName",
       sort: {x: "y"},
       tip: true
@@ -154,6 +142,48 @@ display(Plot.plot({
   ]
 }))
 ```
+
+[View detailed recursion benchmarks →](/recursion)
+
+---
+
+## Events: Library Comparison
+
+Event handling and subscription management performance.
+
+```js
+const eventsData = await query(`
+  SELECT benchmarkName, avgTime, p50, p95, p99
+  FROM benchmarks
+  WHERE scenario LIKE '%.events'
+    AND runtime = '${runtime}'
+    AND releaseTag = '${releaseTag}'
+  ORDER BY avgTime ASC
+`);
+```
+
+```js
+display(Plot.plot({
+  title: `Events Benchmark (${runtime})`,
+  width,
+  height: 350,
+  x: {label: "Library"},
+  y: {label: "Avg Time (ms)", grid: true},
+  color: {legend: true, scheme: "tableau10"},
+  marks: [
+    Plot.barY(eventsData, {
+      x: "benchmarkName",
+      y: "avgTime",
+      fill: "benchmarkName",
+      sort: {x: "y"},
+      tip: true
+    }),
+    Plot.ruleY([0]),
+  ]
+}))
+```
+
+[View detailed events benchmarks →](/events)
 
 ---
 
