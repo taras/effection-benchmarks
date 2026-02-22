@@ -8,8 +8,7 @@ Static performance dashboard for the Effection structured concurrency library. B
 
 ```
 scripts/generate-fixtures.js     →  data/json/*.json (30 benchmark files)
-scripts/json-to-parquet.sql      →  data/benchmarks.parquet (flattened)
-cp to src/data/                  →  src/data/benchmarks.parquet
+scripts/json-to-parquet.sql      →  src/data/benchmarks.parquet (flattened)
 npm run build                    →  dist/ (static site)
 ```
 
@@ -20,8 +19,8 @@ All SQL queries run client-side in the browser via DuckDB WASM. The Parquet file
 ```bash
 npm run generate          # Create fake benchmark JSON fixtures
 npm run parquet           # Convert JSON → Parquet (requires duckdb CLI)
-npm run data              # Run generate + parquet + copy to src/data/
-npm run build             # Build Observable Framework site (prebuild populates npm cache)
+npm run data              # Run generate + parquet (writes directly to src/data/)
+npm run build             # Build Observable Framework site (requires network access)
 npm run dev               # Start Observable preview server
 npm run clean             # Clear Observable cache
 ```
@@ -48,7 +47,9 @@ npm run clean             # Clear Observable cache
 ```
 
 ### Flattened Parquet columns
-`releaseTag`, `runtime`, `runtimeMajorVersion`, `timestamp`, `runnerOs`, `runnerArch`, `scenario`, `paramRepeat`, `paramWarmup`, `benchmarkName`, `avgTime`, `minTime`, `maxTime`, `stdDev`, `p50`, `p95`, `p99`, `sourceFile`
+`releaseTag`, `runtime`, `runtimeMajorVersion`, `timestamp`, `runnerOs`, `runnerArch`, `scenario`, `benchmarkParams` (JSON string), `benchmarkName`, `avgTime`, `minTime`, `maxTime`, `stdDev`, `p50`, `p95`, `p99`, `sourceFile`
+
+The `benchmarkParams` column stores the full `metadata.benchmarkParams` object as a JSON string. Extract values with `json_extract(benchmarkParams, '$.depth')` or `json_extract(benchmarkParams, '$.listeners')`.
 
 ### Data dimensions
 - **Releases**: v4.0.0 through v4.4.0
@@ -57,29 +58,17 @@ npm run clean             # Clear Observable cache
 
 ## Known Pitfalls
 
-### Two copies of the parquet file
-`data/benchmarks.parquet` is the source of truth (output of the DuckDB conversion). `src/data/benchmarks.parquet` is a copy required by Observable's `FileAttachment`. The `npm run data` script handles the copy, but if you regenerate the parquet manually you must also copy it. They can silently drift — always use `npm run data` to stay in sync.
-
 ### Semantic version sorting
 The dashboard sorts releases by `releaseTag` string (`ORDER BY releaseTag`). This works for `v4.0.0` through `v4.4.0` because alphabetical order matches version order. **This breaks for `v4.9.0` vs `v4.10.0`** (lexicographic: `v4.1` < `v4.9` but `v4.10` < `v4.9`). For production, either:
 - Add a numeric `releaseOrder` column in the Parquet conversion
 - Use `timestamp` for ordering instead of `releaseTag`
 - Parse versions in SQL: `string_split(releaseTag, '.')` and cast to integers
 
-### Scenario-specific benchmarkParams are lost in flattening
-The JSON schema has variable keys in `benchmarkParams` — `depth` for recursion, `listeners` for events. The Parquet conversion only preserves `repeat` and `warmup` (the common fields). If you need scenario-specific params in queries, add them as explicit columns in `json-to-parquet.sql` or store `benchmarkParams` as a JSON string column.
-
 ### The `results` array supports multiple entries
 The JSON schema allows multiple entries in `results[]` (each with a `name` like `"effection"`). The `unnest(results)` in the SQL handles this correctly, but the dashboard doesn't filter by `benchmarkName`. If you add comparisons against other libraries, add a `benchmarkName` filter to queries and UI.
 
 ### `@duckdb/duckdb-wasm` is pinned to a dev release
 `package.json` installs `@duckdb/duckdb-wasm@^1.33.1-dev18.0` — a prerelease version. For production, pin to the latest stable release. Check https://www.npmjs.com/package/@duckdb/duckdb-wasm for the current stable version.
-
-### Two different DuckDB WASM versions in play
-`populate-npm-cache.js` pins `@duckdb/duckdb-wasm@1.29.0` because that's what Observable Framework's internal stdlib expects (`DUCKDB_WASM_VERSION` in the framework source). The page itself uses whatever version is in `node_modules` (currently `1.33.1-dev18.0`). These serve different purposes and don't conflict, but it's confusing — the cache entry is only to satisfy the framework's bundler for code paths we don't use.
-
-### Observable Framework version sensitivity
-The `populate-npm-cache.js` workaround is tightly coupled to Observable Framework v1.13. If the framework is upgraded, the list of `npm:` packages in its client runtime may change, breaking the cache. After upgrading `@observablehq/framework`, run the build and add any new `package@version` entries that appear in `fetch failed` errors.
 
 ### `docs/` is a manual snapshot
 The `docs/` directory is committed for GitHub Pages but is not automatically rebuilt. After changing source code, you must run `npm run build` and copy `dist/` to `docs/` again. In production, use GitHub Actions to automate this — don't commit `docs/` at all, deploy `dist/` directly.
@@ -89,13 +78,9 @@ Observable's `FileAttachment("data/benchmarks.parquet")` is analyzed at compile 
 
 ## Key Technical Decisions & Gotchas
 
-### Observable Framework offline builds
+### Build requires network access
 
-Observable Framework v1.13 fetches package metadata from `registry.npmjs.org` at build time — even for packages the page doesn't use. This is because the framework's own client runtime (`recommendedLibraries.js`, `sampleDatasets.js`, `fileAttachment.js`) contains dynamic `import("npm:...")` calls that the rollup bundler resolves during the build step.
-
-**Workaround**: `scripts/populate-npm-cache.js` pre-creates empty directories in `src/.observablehq/cache/_npm/` matching the expected `package@version` format. The framework's version resolver (`resolveNpmVersion`) checks this cache first and skips the network call when it finds a match. This runs automatically via the `prebuild` npm hook.
-
-**If you add new Observable Framework features that pull in additional `npm:` packages**, the build will fail with `fetch failed` errors. Add the missing `package@version` entries to `populate-npm-cache.js`.
+Observable Framework v1.13 fetches package metadata from `registry.npmjs.org` at build time for `npm:` specifiers referenced in its client runtime. The build (`npm run build`) and dev server (`npm run dev`) both require network access. If builds fail with `fetch failed` errors, check your network connection.
 
 ### Avoiding `npm:` protocol imports
 
@@ -130,7 +115,8 @@ const DUCKDB_BUNDLES = {
 };
 
 const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
-const worker = await duckdb.createWorker(bundle.mainWorker);
+// Use { type: "module" } because Observable's dev server wraps the worker as an ES module
+const worker = new Worker(bundle.mainWorker, { type: "module" });
 const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
@@ -191,18 +177,16 @@ Install: download from https://github.com/duckdb/duckdb/releases
 
 ```
 ├── data/
-│   ├── json/                    # Generated benchmark JSON files
-│   │   └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
-│   └── benchmarks.parquet       # Flattened Parquet (all benchmarks)
+│   └── json/                    # Generated benchmark JSON files
+│       └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
 ├── docs/                        # Built site for GitHub Pages
 ├── scripts/
 │   ├── generate-fixtures.js     # Fake data generator
 │   ├── json-to-parquet.sql      # DuckDB conversion (used by npm run parquet)
-│   ├── json-to-parquet.js       # Alternative Node.js conversion (requires duckdb-async)
-│   └── populate-npm-cache.js    # Offline build workaround
+│   └── json-to-parquet.js       # Alternative Node.js conversion (requires duckdb-async)
 ├── src/
 │   ├── data/
-│   │   └── benchmarks.parquet   # Copy of parquet for Observable FileAttachment
+│   │   └── benchmarks.parquet   # Parquet file for Observable FileAttachment
 │   └── index.md                 # Dashboard page (all charts and queries)
 ├── observablehq.config.js       # Observable Framework config
 └── package.json
@@ -220,10 +204,9 @@ The `generate-fixtures.js` script produces synthetic data. In production, replac
 ### GitHub Actions integration
 When adding CI automation:
 1. Run benchmarks and output JSON files
-2. Run `duckdb < scripts/json-to-parquet.sql` to create the Parquet file
-3. Copy to `src/data/benchmarks.parquet`
-4. Run `npm run build`
-5. Deploy `dist/` to GitHub Pages
+2. Run `duckdb < scripts/json-to-parquet.sql` to create the Parquet file (writes directly to `src/data/`)
+3. Run `npm run build`
+4. Deploy `dist/` to GitHub Pages
 
 ### Multi-page dashboards
 Observable Framework supports file-based routing. Add more `.md` files to `src/` for additional pages (e.g., `src/trends.md`, `src/compare.md`). Configure navigation in `observablehq.config.js`:

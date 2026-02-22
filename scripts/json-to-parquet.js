@@ -1,9 +1,9 @@
 import { Database } from "duckdb-async";
 import { join } from "node:path";
 
-const DATA_DIR = join(import.meta.dirname, "..", "data");
-const JSON_GLOB = join(DATA_DIR, "json", "*.json");
-const PARQUET_OUT = join(DATA_DIR, "benchmarks.parquet");
+const ROOT_DIR = join(import.meta.dirname, "..");
+const JSON_GLOB = join(ROOT_DIR, "data", "json", "*.json");
+const PARQUET_OUT = join(ROOT_DIR, "src", "data", "benchmarks.parquet");
 
 const db = await Database.create(":memory:");
 
@@ -18,8 +18,7 @@ await db.run(`
       metadata.runner.os AS runnerOs,
       metadata.runner.arch AS runnerArch,
       metadata.scenario,
-      metadata.benchmarkParams.repeat AS paramRepeat,
-      metadata.benchmarkParams.warmup AS paramWarmup,
+      to_json(metadata.benchmarkParams)::VARCHAR AS benchmarkParams,
       unnest(results).name AS benchmarkName,
       unnest(results).stats.avgTime,
       unnest(results).stats.minTime,

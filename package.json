@@ -6,9 +6,8 @@
   "scripts": {
     "generate": "node scripts/generate-fixtures.js",
     "parquet": "duckdb < scripts/json-to-parquet.sql",
-    "data": "npm run generate && npm run parquet && cp data/benchmarks.parquet src/data/benchmarks.parquet",
+    "data": "npm run generate && npm run parquet",
     "dev": "observable preview",
-    "prebuild": "node scripts/populate-npm-cache.js",
     "build": "observable build",
     "clean": "rimraf src/.observablehq/cache"
   },
