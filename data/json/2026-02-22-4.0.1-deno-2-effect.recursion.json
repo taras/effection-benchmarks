@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "4.0.1",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-02-22T21:05:25.313Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "effect.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "effect",
+      "stats": {
+        "avgTime": 0.4640835000000038,
+        "minTime": 0.22020800000001373,
+        "maxTime": 1.3762920000000065,
+        "stdDev": 0.321784244547569,
+        "p50": 0.3838749999999891,
+        "p95": 1.3762920000000065,
+        "p99": 1.3762920000000065
+      }
+    }
+  ]
+}
