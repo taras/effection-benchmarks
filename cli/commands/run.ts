@@ -185,6 +185,7 @@ export function* runCommand(args: string[]): Operation<number> {
   const release = config.release;
   const runtimes = config.runtime as RuntimeId[];
   const useCache = config["cache-workspace"] as boolean;
+  const failFast = config["fail-fast"] as boolean;
 
   // Load comparison library versions
   const defaultVersions = loadConfig();
@@ -229,6 +230,10 @@ export function* runCommand(args: string[]): Operation<number> {
       }),
     );
     results.push(r);
+
+    if (failFast && !r.ok) {
+      break;
+    }
   }
 
   // Process results

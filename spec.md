@@ -18,7 +18,7 @@ All source code produced MUST conform to the effectionx coding standards and pol
 
 ## Overview
 
-This is a standalone repository (will be later moved and renamed to `thefrontside/effection-benchmarks`) that tracks Effection's performance across releases and runtime environments. It is fully decoupled from the main Effection repository. On a schedule, it benchmarks specific published npm versions of Effection across multiple JavaScript runtimes using a downstream harness (ported from Effection's benchmark scenarios), stores results as JSON files and serves an Observable Framework dashboard via GitHub Pages.
+This is a standalone repository (will be later moved and renamed to `thefrontside/effection-benchmarks`) that tracks Effection's performance across releases and runtime environments. It is fully decoupled from the main Effection repository. On a schedule, it benchmarks specific published npm versions of Effection across multiple JavaScript runtimes using a downstream harness (ported from Effection's benchmark scenarios), stores results as JSON files and serves an Observable Framework dashboard via Deno Deploy.
 
 The system is designed from the start to be operated by both humans and LLM agents using the same CLI interface and documented via an AGENTS.md file.
 
@@ -274,7 +274,11 @@ The filename is for human readability only. All metadata for querying is embedde
 
 ### File Location
 
-JSON result files are stored in `data/json/` in the benchmark repository. The Parquet file is written directly to `src/data/benchmarks.parquet`.
+JSON result files are stored in `data/json/` in the benchmark repository.
+
+Parquet can be produced in two ways:
+- **Dynamic (preferred)**: served on-demand by the Deno Deploy server route at `/api/benchmarks.parquet`.
+- **Legacy (optional)**: generated locally by `deno task parquet` into `src/data/benchmarks.parquet`.
 
 ### Parquet Schema
 
@@ -345,8 +349,8 @@ Use `fail-fast: false` so all runtime combinations complete even if one fails.
 2. Install the appropriate runtime for the matrix entry
 3. Run `bench run --release <version> --runtime <runtime>`
 4. Generate/update Parquet from `data/json/` (e.g., `deno task parquet` or a dedicated CLI command)
-5. Commit new JSON result files and updated Parquet to the repository
-6. Build and deploy the Observable Framework site to GitHub Pages
+5. Commit new JSON result files to the repository
+6. Deno Deploy integrated CI builds and serves the dashboard automatically
 
 #### Variance Mitigation
 
@@ -411,8 +415,7 @@ effection-benchmark/
 ├── deno.lock                        # Lockfile for reproducibility
 ├── .github/
 │   └── workflows/
-│       ├── benchmark.yml            # Scheduled benchmark runner
-│       └── deploy.yml               # Dashboard deployment
+│       └── benchmark.yml            # Scheduled benchmark runner
 ├── cli/
 │   ├── main.ts                      # CLI entry point (uses Effection main())
 │   ├── mod.ts                       # Library exports for testing

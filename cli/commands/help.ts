@@ -42,11 +42,12 @@ Options:
   --rxjs-version    RxJS version for comparison (default: from config)
   --effect-version  Effect version for comparison (default: from config)
   --co-version      co version for comparison (default: from config)
+  --cache-workspace Cache npm install between runs (default: false)
   --fail-fast       Stop on first runtime failure (default: false)
 
 Examples:
   bench run --release 4.0.0 --runtime node
-  bench run -r 4.1.0 --runtime node --runtime deno --runtime bun
+  bench run -r 4.0.2 --runtime node --runtime deno
   bench run --release 4.0.0 --runtime node --repeat 20 --depth 50
 `.trim();
 
