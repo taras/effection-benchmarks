@@ -29,8 +29,8 @@ const db = new duckdb.AsyncDuckDB(logger, worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
 
-// Load the parquet file
-const parquetBuffer = await FileAttachment("data/benchmarks.parquet").arrayBuffer();
+// Load the parquet file from the API (dynamically generated server-side)
+const parquetBuffer = await fetch("/api/benchmarks.parquet").then(r => r.arrayBuffer());
 await db.registerFileBuffer("benchmarks.parquet", new Uint8Array(parquetBuffer));
 const conn = await db.connect();
 await conn.query("CREATE TABLE benchmarks AS SELECT * FROM parquet_scan('benchmarks.parquet')");

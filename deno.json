@@ -1,5 +1,13 @@
 {
   "nodeModulesDir": "auto",
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task build",
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "main.tsx"
+    }
+  },
   "tasks": {
     "generate": "deno run -A scripts/generate-fixtures.js",
     "parquet": "duckdb < scripts/json-to-parquet.sql",
@@ -9,7 +17,7 @@
     "clean": "rm -rf src/.observablehq/cache",
     "dev": "deno run -A main.tsx",
     "start": "deno run -A main.tsx",
-    "check": "deno check main.tsx plugins/**/*.ts context/**/*.ts",
+    "check": "deno check main.tsx plugins/**/*.ts context/**/*.ts routes/**/*.ts",
     "lint": "deno lint",
     "fmt": "deno fmt"
   },
@@ -39,6 +47,8 @@
     "@observablehq/plot": "npm:@observablehq/plot@0.6.17",
     "@observablehq/inputs": "npm:@observablehq/inputs@0.12.0",
     "@duckdb/duckdb-wasm": "npm:@duckdb/duckdb-wasm@1.33.1-dev18.0",
+    "@duckdb/node-api": "npm:@duckdb/node-api",
+    "folder-hash": "npm:folder-hash@4.1.1",
     "apache-arrow": "npm:apache-arrow@21.1.0"
   },
   "fmt": {

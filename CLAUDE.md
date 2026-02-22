@@ -8,19 +8,25 @@ Static performance dashboard for the Effection structured concurrency library. B
 
 ```
 scripts/generate-fixtures.js     →  data/json/*.json (30 benchmark files)
-scripts/json-to-parquet.sql      →  src/data/benchmarks.parquet (flattened)
 deno task build                  →  dist/ (Observable static site)
-deno task dev                    →  Revolution server (serves dist/ + /sitemap.xml)
+deno task dev                    →  Revolution server:
+                                      - serves dist/ (static Observable site)
+                                      - /api/benchmarks.parquet (dynamic Parquet generation)
+                                      - /sitemap.xml (sitemap plugin)
 ```
 
-All SQL queries run client-side in the browser via DuckDB WASM. The Parquet file is loaded into an in-memory DuckDB instance using `FileAttachment().arrayBuffer()`.
+**Dynamic Parquet Generation**: The server generates Parquet on-demand from JSON benchmark files using DuckDB's `@duckdb/node-api` package. The Parquet is cached in memory after first generation. This eliminates the need for the DuckDB CLI during build.
+
+**Client-side Queries**: The Observable dashboard fetches `/api/benchmarks.parquet` and queries it client-side with DuckDB WASM. All SQL queries run in the browser.
 
 ### Deployment
 
 - **URL**: https://effection-benchmarks.taras.deno.net
 - **Platform**: Deno Deploy
 - **Entry point**: `main.tsx` (Revolution server)
-- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yaml`)
+- **CI/CD**: Deno Deploy integrated CI via `deno.json` `deploy` config
+
+The `deno.json` includes a `deploy` configuration for the new Deno Deploy platform with integrated CI.
 
 ## Commands
 
@@ -187,6 +193,8 @@ Install: download from https://github.com/duckdb/duckdb/releases
 │   ├── sitemap.ts               # Sitemap plugin (generates /sitemap.xml)
 │   ├── current-request.ts       # Current request plugin
 │   └── etag.ts                  # ETag caching plugin
+├── routes/
+│   └── benchmarks-parquet.ts    # Dynamic Parquet generation route (DuckDB)
 ├── data/
 │   └── json/                    # Generated benchmark JSON files
 │       └── YYYY-MM-DD-vX.Y.Z-runtime-ver-scenario.json
@@ -195,12 +203,7 @@ Install: download from https://github.com/duckdb/duckdb/releases
 │   ├── generate-fixtures.js     # Fake data generator
 │   └── json-to-parquet.sql      # DuckDB conversion (used by deno task parquet)
 ├── src/
-│   ├── data/
-│   │   └── benchmarks.parquet   # Parquet file for Observable FileAttachment
 │   └── index.md                 # Dashboard page (all charts and queries)
-├── .github/
-│   └── workflows/
-│       └── deploy.yaml          # Deno Deploy CI/CD workflow
 ├── main.tsx                     # Revolution server entry point
 ├── deno.json                    # Deno configuration
 └── observablehq.config.js       # Observable Framework config
@@ -215,8 +218,8 @@ The `generate-fixtures.js` script produces synthetic data. In production, replac
 - DuckDB WASM loads the entire Parquet file into browser memory. For <100MB this is fine. Beyond that, consider partitioned Parquet files or server-side query execution.
 - The current single-page dashboard works for a few hundred benchmark runs. For thousands, add pagination or date-range filtering to limit query scope.
 
-### GitHub Actions integration
-The deploy workflow (`.github/workflows/deploy.yaml`) already handles the full pipeline: install DuckDB CLI, `deno task data`, `deno task build`, deploy to Deno Deploy. When adding real benchmark CI, add a separate workflow that runs benchmarks, outputs JSON files, commits them to the repo, and the deploy workflow will pick them up on push.
+### CI integration
+Deployment uses Deno Deploy integrated CI from `deno.json` `deploy` settings. If you add benchmark generation in CI, either commit JSON fixtures before deploy or add a separate pipeline that updates `data/json/` prior to deployment.
 
 ### Multi-page dashboards
 Observable Framework supports file-based routing. Add more `.md` files to `src/` for additional pages (e.g., `src/trends.md`, `src/compare.md`). Configure navigation in `observablehq.config.js`:

@@ -5,6 +5,7 @@ import { fromFileUrl } from "@std/path/from-file-url";
 import { sitemapPlugin, type SitemapExtension, type RoutePath } from "./plugins/sitemap.ts";
 import { currentRequestPlugin } from "./plugins/current-request.ts";
 import { etagPlugin } from "./plugins/etag.ts";
+import { benchmarksParquetHandler } from "./routes/benchmarks-parquet.ts";
 
 const distRoot = fromFileUrl(new URL("./dist/", import.meta.url));
 
@@ -36,6 +37,8 @@ if (import.meta.main) {
         revolutionRoute("/healthz", function* () {
           return new Response("ok", { status: 200 });
         }),
+        // Dynamic Parquet generation from JSON benchmark files
+        revolutionRoute("/api/benchmarks.parquet", benchmarksParquetHandler),
         // Serve all static assets from dist/ with sitemap entry
         staticDashboard(),
       ],
