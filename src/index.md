@@ -111,12 +111,12 @@ Deeply nested async operations — measures structured concurrency overhead.
 
 ```js
 const recursionData = await query(`
-  SELECT benchmarkName, avgTime, p50, p95, p99
+  SELECT benchmarkName, avgTime * 1000 AS avgTimeUs, p50 * 1000 AS p50Us, p95 * 1000 AS p95Us, p99 * 1000 AS p99Us
   FROM benchmarks
   WHERE scenario LIKE '%.recursion'
     AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
-  ORDER BY avgTime ASC
+  ORDER BY avgTimeUs ASC
 `);
 ```
 
@@ -128,12 +128,12 @@ display(Plot.plot({
   width,
   height: 350,
   x: {label: "Library"},
-  y: {label: "Avg Time (ms)", grid: true},
+  y: {label: "Avg Time (μs)", grid: true},
   color: {legend: true, scheme: "tableau10"},
   marks: [
     Plot.barY(recursionData, {
       x: "benchmarkName",
-      y: "avgTime",
+      y: "avgTimeUs",
       fill: "benchmarkName",
       sort: {x: "y"},
       tip: true
