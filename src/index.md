@@ -71,6 +71,14 @@ await conn.query(`
     FROM parsed
   )
 `);
+
+// Register percentile macro for computing percentiles from sample arrays
+// Uses 1-based ceiling index (same logic as cli/lib/stats.ts)
+await conn.query(`
+  CREATE OR REPLACE MACRO pctl(arr, p) AS (
+    list_sort(arr)[GREATEST(1, CAST(CEIL(len(arr) * p / 100.0) AS INTEGER))]
+  )
+`);
 ```
 
 ```js
@@ -111,7 +119,12 @@ Deeply nested async operations — measures structured concurrency overhead.
 
 ```js
 const recursionData = await query(`
-  SELECT benchmarkName, avgTime * 1000 AS avgTimeUs, p50 * 1000 AS p50Us, p95 * 1000 AS p95Us, p99 * 1000 AS p99Us
+  SELECT 
+    benchmarkName, 
+    list_avg(samples) * 1000 AS avgTimeUs, 
+    pctl(samples, 50) * 1000 AS p50Us, 
+    pctl(samples, 95) * 1000 AS p95Us, 
+    pctl(samples, 99) * 1000 AS p99Us
   FROM benchmarks
   WHERE scenario LIKE '%.recursion'
     AND runtime = '${runtime}'
@@ -153,7 +166,12 @@ Event handling and subscription management performance.
 
 ```js
 const eventsData = await query(`
-  SELECT benchmarkName, avgTime, p50, p95, p99
+  SELECT 
+    benchmarkName, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE scenario LIKE '%.events'
     AND runtime = '${runtime}'
@@ -200,7 +218,12 @@ const scenario = Generators.input(scenarioInput);
 
 ```js
 const effectionData = await query(`
-  SELECT releaseTag, avgTime, p50, p95, p99
+  SELECT 
+    releaseTag, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE benchmarkName = 'effection'
     AND scenario = 'effection.${scenario}'
@@ -247,7 +270,10 @@ const scenarioNames = scenario === "recursion"
   : "'effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events'";
 
 const allLibrariesData = await query(`
-  SELECT releaseTag, benchmarkName, avgTime
+  SELECT 
+    releaseTag, 
+    benchmarkName, 
+    list_avg(samples) AS avgTime
   FROM benchmarks
   WHERE scenario IN (${scenarioNames})
     AND runtime = '${runtime}'
@@ -288,7 +314,13 @@ Compare performance across runtimes for Effection.
 
 ```js
 const runtimeComparisonData = await query(`
-  SELECT runtime, scenario, avgTime, p50, p95, p99
+  SELECT 
+    runtime, 
+    scenario, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE benchmarkName = 'effection'
     AND releaseTag = '${releaseTag}'

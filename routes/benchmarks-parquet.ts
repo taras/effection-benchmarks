@@ -84,13 +84,7 @@ function* generateParquet(): Operation<Uint8Array> {
       metadata.scenario AS scenario,
       to_json(metadata.benchmarkParams)::VARCHAR AS benchmarkParams,
       unnest(results).name AS benchmarkName,
-      unnest(results).stats.avgTime AS avgTime,
-      unnest(results).stats.minTime AS minTime,
-      unnest(results).stats.maxTime AS maxTime,
-      unnest(results).stats.stdDev AS stdDev,
-      unnest(results).stats.p50 AS p50,
-      unnest(results).stats.p95 AS p95,
-      unnest(results).stats.p99 AS p99,
+      unnest(results).samples AS samples,
       filename AS sourceFile
     FROM read_json_auto('${jsonGlobPath}', filename=true, union_by_name=true)
   `);

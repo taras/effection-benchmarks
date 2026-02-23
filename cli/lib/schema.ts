@@ -10,8 +10,11 @@ import { z } from "zod";
 /**
  * Schema version for migration safety.
  * Increment when making breaking changes to the schema.
+ *
+ * Version 2: Store raw timing samples instead of pre-computed aggregates.
+ *            Aggregates are computed at query time in DuckDB.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * Phase 1 runtimes (server-side).
@@ -55,31 +58,39 @@ export const ScenarioNameSchema = z.enum(SCENARIOS);
 export type ScenarioName = z.infer<typeof ScenarioNameSchema>;
 
 /**
- * Statistics for a single benchmark run.
+ * Raw timing samples from a benchmark run.
  * All time values are in milliseconds.
+ * Aggregates (avg, min, max, percentiles) are computed at query time.
  */
-export const BenchmarkStatsSchema = z.object({
-  avgTime: z.number().nonnegative().finite(),
-  minTime: z.number().nonnegative().finite(),
-  maxTime: z.number().nonnegative().finite(),
-  stdDev: z.number().nonnegative().finite(),
-  p50: z.number().nonnegative().finite(),
-  p95: z.number().nonnegative().finite(),
-  p99: z.number().nonnegative().finite(),
-});
+export const SamplesSchema = z.array(z.number().nonnegative().finite()).min(1);
 
 /**
- * Statistics type.
+ * Samples type.
  */
-export type BenchmarkStats = z.infer<typeof BenchmarkStatsSchema>;
+export type Samples = z.infer<typeof SamplesSchema>;
 
 /**
  * A single result entry (one library/implementation).
+ * Stores raw timing samples instead of pre-computed statistics.
  */
 export const ResultEntrySchema = z.object({
   name: z.string().min(1),
-  stats: BenchmarkStatsSchema,
+  samples: SamplesSchema,
 });
+
+/**
+ * Computed statistics (derived at query time, not stored).
+ * All time values are in milliseconds.
+ */
+export interface BenchmarkStats {
+  avgTime: number;
+  minTime: number;
+  maxTime: number;
+  stdDev: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
 
 /**
  * Result entry type.
