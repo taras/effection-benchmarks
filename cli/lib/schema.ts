@@ -38,6 +38,7 @@ export type RuntimeId = z.infer<typeof RuntimeIdSchema>;
 export const SCENARIOS = [
   "effection.recursion",
   "effection.events",
+  "effection-inline.recursion",
   "rxjs.recursion",
   "rxjs.events",
   "effect.recursion",
@@ -166,6 +167,7 @@ export const BenchmarkConfigSchema = z.object({
     rxjs: z.string().min(1),
     effect: z.string().min(1),
     co: z.string().min(1),
+    inline: z.string().min(1),
   }),
 });
 

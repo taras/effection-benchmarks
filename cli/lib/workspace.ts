@@ -25,6 +25,7 @@ export interface WorkspaceConfig {
     rxjs: string;
     effect: string;
     co: string;
+    inline: string;
   };
   /** Use persistent cache directory instead of temp dir */
   useCache?: boolean;
@@ -48,6 +49,7 @@ function generatePackageJson(config: WorkspaceConfig): string {
     private: true,
     dependencies: {
       effection: config.effectionVersion,
+      "@effectionx/inline": config.comparisonVersions.inline,
       rxjs: config.comparisonVersions.rxjs,
       effect: config.comparisonVersions.effect,
       co: config.comparisonVersions.co,
@@ -59,9 +61,34 @@ function generatePackageJson(config: WorkspaceConfig): string {
 /**
  * Generate deno.json for Deno runtime compatibility.
  * Enables node_modules resolution for bare specifiers.
+ * Includes import map to resolve @effectionx/inline to local stub since
+ * Deno's npm resolver cannot handle pkg.pr.new URLs.
  */
 function generateDenoJson(): string {
-  return JSON.stringify({ nodeModulesDir: "auto" }, null, 2);
+  return JSON.stringify({
+    nodeModulesDir: "auto",
+    imports: {
+      "@effectionx/inline": "./inline-stub.ts",
+    },
+  }, null, 2);
+}
+
+/**
+ * Generate a stub module for @effectionx/inline.
+ * This allows Deno to parse scenarios that import inline() without
+ * actually resolving the pkg.pr.new URL. The inline scenario itself
+ * is skipped at runtime for Deno.
+ */
+function generateInlineStub(): string {
+  return `/**
+ * Stub for @effectionx/inline.
+ * This module exists so Deno can parse the scenario registry.
+ * The effection-inline.recursion scenario is skipped for Deno at runtime.
+ */
+export function inline<T>(_operation: unknown): unknown {
+  throw new Error("@effectionx/inline stub: this scenario should not run on Deno");
+}
+`;
 }
 
 /**
@@ -71,6 +98,7 @@ function generateDenoJson(): string {
 async function computeCacheKey(config: WorkspaceConfig): Promise<string> {
   const data = JSON.stringify({
     effection: config.effectionVersion,
+    inline: config.comparisonVersions.inline,
     rxjs: config.comparisonVersions.rxjs,
     effect: config.comparisonVersions.effect,
     co: config.comparisonVersions.co,
@@ -224,9 +252,13 @@ export function useWorkspace(config: WorkspaceConfig): Operation<Workspace> {
       // Write deno.json for Deno runtime support
       yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson()));
 
+      // Write inline stub for Deno (since pkg.pr.new URLs aren't supported)
+      yield* call(() => Deno.writeTextFile(`${dir}/inline-stub.ts`, generateInlineStub()));
+
       // Run npm install if needed
+      // Using --legacy-peer-deps to avoid peer dependency conflicts with preview packages
       if (needsNpmInstall) {
-        const { code, stderr } = yield* exec("npm install --silent", { cwd: dir }).join();
+        const { code, stderr } = yield* exec("npm install --silent --legacy-peer-deps", { cwd: dir }).join();
         if (code !== 0) {
           throw new Error(`npm install failed (exit code ${code}): ${stderr}`);
         }

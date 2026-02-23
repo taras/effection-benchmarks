@@ -10,6 +10,7 @@
 import type { Operation } from "effection";
 import { z } from "zod";
 import { Configliere } from "configliere";
+import { parse, greaterOrEqual } from "@std/semver";
 import {
   RuntimeIdSchema,
   SCENARIOS,
@@ -63,6 +64,10 @@ const configliere = new Configliere({
     schema: z.string().optional(),
     description: "co version override",
   },
+  "inline-version": {
+    schema: z.string().optional(),
+    description: "@effectionx/inline package version override",
+  },
   "cache-workspace": {
     schema: z.boolean(),
     default: false,
@@ -84,6 +89,7 @@ function loadConfig(): {
   rxjs: string;
   effect: string;
   co: string;
+  inline: string;
 } {
   try {
     const text = Deno.readTextFileSync("benchmark.config.json");
@@ -95,8 +101,61 @@ function loadConfig(): {
       rxjs: "7.8.1",
       effect: "3.14.0",
       co: "4.6.0",
+      inline: "https://pkg.pr.new/thefrontside/effectionx/@effectionx/inline@117",
     };
   }
+}
+
+/**
+ * Minimum Effection version for inline scenario.
+ * The @effectionx/inline plugin requires Effection 4.x.
+ */
+const INLINE_MIN_VERSION = parse("4.0.0");
+
+/**
+ * Scenarios with version restrictions.
+ * Maps scenario name to minimum required Effection version.
+ */
+const VERSION_RESTRICTED_SCENARIOS: Record<string, ReturnType<typeof parse>> = {
+  "effection-inline.recursion": INLINE_MIN_VERSION,
+};
+
+/**
+ * Scenarios that are incompatible with certain runtimes.
+ * The inline scenario uses a pkg.pr.new URL which Deno's npm resolver cannot handle.
+ */
+const RUNTIME_INCOMPATIBLE_SCENARIOS: Record<string, RuntimeId[]> = {
+  "effection-inline.recursion": ["deno"],
+};
+
+/**
+ * Check if a scenario is compatible with the given Effection version.
+ * Uses direct version comparison to properly handle prereleases (e.g., 4.1.0-alpha.0).
+ */
+function isScenarioCompatible(scenarioName: string, effectionVersion: string): boolean {
+  const minVersion = VERSION_RESTRICTED_SCENARIOS[scenarioName];
+  if (!minVersion) {
+    return true; // No version restriction
+  }
+
+  try {
+    const version = parse(effectionVersion);
+    return greaterOrEqual(version, minVersion);
+  } catch {
+    // If version parsing fails, skip to be safe
+    return false;
+  }
+}
+
+/**
+ * Check if a scenario is compatible with the given runtime.
+ */
+function isScenarioRuntimeCompatible(scenarioName: string, runtime: RuntimeId): boolean {
+  const incompatibleRuntimes = RUNTIME_INCOMPATIBLE_SCENARIOS[scenarioName];
+  if (!incompatibleRuntimes) {
+    return true; // No runtime restriction
+  }
+  return !incompatibleRuntimes.includes(runtime);
 }
 
 /**
@@ -110,7 +169,7 @@ function* runForRuntime(
     repeat: number;
     depth: number;
     warmup: number;
-    comparisonVersions: { rxjs: string; effect: string; co: string };
+    comparisonVersions: { rxjs: string; effect: string; co: string; inline: string };
   },
 ): Operation<BenchmarkResult[]> {
   const adapter = getAdapter(runtime);
@@ -123,13 +182,29 @@ function* runForRuntime(
 
   // Get runtime version
   const version = yield* adapter.version();
-  console.log(`  ${runtime} ${version}: running ${SCENARIOS.length} scenarios...`);
+
+  // Filter scenarios by version and runtime compatibility
+  const compatibleScenarios = SCENARIOS.filter((s) =>
+    isScenarioCompatible(s, release) && isScenarioRuntimeCompatible(s, runtime)
+  );
+  const versionSkipped = SCENARIOS.filter((s) => !isScenarioCompatible(s, release)).length;
+  const runtimeSkipped = SCENARIOS.filter(
+    (s) => isScenarioCompatible(s, release) && !isScenarioRuntimeCompatible(s, runtime)
+  ).length;
+
+  console.log(`  ${runtime} ${version}: running ${compatibleScenarios.length} scenarios...`);
+  if (versionSkipped > 0) {
+    console.log(`    (${versionSkipped} skipped - require Effection 4.x)`);
+  }
+  if (runtimeSkipped > 0) {
+    console.log(`    (${runtimeSkipped} skipped - incompatible with ${runtime})`);
+  }
 
   const results: BenchmarkResult[] = [];
 
-  // Run ALL scenarios
-  for (let i = 0; i < SCENARIOS.length; i++) {
-    const scenario = SCENARIOS[i] as ScenarioName;
+  // Run compatible scenarios
+  for (let i = 0; i < compatibleScenarios.length; i++) {
+    const scenario = compatibleScenarios[i] as ScenarioName;
 
     const result = yield* adapter.runScenario({
       releaseTag: release,
@@ -142,7 +217,7 @@ function* runForRuntime(
     });
 
     results.push(result);
-    console.log(`    [${i + 1}/${SCENARIOS.length}] ${scenario}`);
+    console.log(`    [${i + 1}/${compatibleScenarios.length}] ${scenario}`);
   }
 
   console.log(`  ${runtime} ${version}: completed ${results.length} scenario(s)`);
@@ -193,6 +268,7 @@ export function* runCommand(args: string[]): Operation<number> {
     rxjs: config["rxjs-version"] ?? defaultVersions.rxjs,
     effect: config["effect-version"] ?? defaultVersions.effect,
     co: config["co-version"] ?? defaultVersions.co,
+    inline: config["inline-version"] ?? defaultVersions.inline,
   };
 
   console.log(`\nRunning benchmarks for Effection ${release}`);
@@ -200,6 +276,7 @@ export function* runCommand(args: string[]): Operation<number> {
   console.log(`Scenarios: ${SCENARIOS.length} total`);
   console.log(`Options: repeat=${config.repeat}, depth=${config.depth}, warmup=${config.warmup}`);
   console.log(`Comparison libs: rxjs@${comparisonVersions.rxjs}, effect@${comparisonVersions.effect}, co@${comparisonVersions.co}`);
+  console.log(`Inline plugin: ${comparisonVersions.inline}`);
   if (useCache) {
     console.log(`Workspace caching: enabled`);
   }

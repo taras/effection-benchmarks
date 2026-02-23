@@ -11,6 +11,7 @@ import type { Scenario } from "../harness/types.ts";
 // Import all scenarios
 import { effectionRecursion } from "./effection.recursion.ts";
 import { effectionEvents } from "./effection.events.ts";
+import { effectionInlineRecursion } from "./effection-inline.recursion.ts";
 import { asyncAwaitRecursion } from "./async-await.recursion.ts";
 import { rxjsRecursion } from "./rxjs.recursion.ts";
 import { rxjsEvents } from "./rxjs.events.ts";
@@ -25,6 +26,7 @@ import { addEventListenerEvents } from "./add-event-listener.events.ts";
 export const scenarios: Record<string, Scenario> = {
   "effection.recursion": effectionRecursion,
   "effection.events": effectionEvents,
+  "effection-inline.recursion": effectionInlineRecursion,
   "async-await.recursion": asyncAwaitRecursion,
   "rxjs.recursion": rxjsRecursion,
   "rxjs.events": rxjsEvents,
