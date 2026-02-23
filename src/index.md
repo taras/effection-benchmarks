@@ -1,12 +1,15 @@
 # Effection Performance Dashboard
 
-This dashboard tracks benchmark performance across releases, runtimes, and scenarios for the [Effection](https://frontside.com/effection) structured concurrency library. All data is queried client-side using DuckDB WASM from a static Parquet file.
+This dashboard tracks benchmark performance across releases, runtimes, and scenarios for the [Effection](https://frontside.com/effection) structured concurrency library compared to other async patterns.
+
+**Benchmarks:**
+- [Recursion](/recursion) - Nested async operations overhead
+- [Events](/events) - Event handling performance
 
 ```js
 import * as Plot from "@observablehq/plot";
 import * as Inputs from "@observablehq/inputs";
 import * as duckdb from "@duckdb/duckdb-wasm";
-import * as arrow from "apache-arrow";
 ```
 
 ```js
@@ -84,49 +87,141 @@ async function query(sql) {
 ```
 
 ```js
+// Get available runtimes from the data
+const runtimes = await query(`SELECT DISTINCT runtime FROM benchmarks ORDER BY runtime`);
+const runtimeOptions = runtimes.map(r => r.runtime);
+const runtimeInput = Inputs.select(runtimeOptions, {label: "Runtime", value: runtimeOptions[0] || "deno"});
+const runtime = Generators.input(runtimeInput);
+
+// Get available Effection releases from the data
+const releases = await query(`SELECT DISTINCT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC`);
+const releaseOptions = releases.map(r => r.releaseTag);
+const releaseInput = Inputs.select(releaseOptions, {label: "Effection Release", value: releaseOptions[0]});
+const releaseTag = Generators.input(releaseInput);
+```
+
+<div class="grid grid-cols-2">
+  <div class="card">${runtimeInput}</div>
+  <div class="card">${releaseInput}</div>
+</div>
+
+## Recursion: Library Comparison
+
+Deeply nested async operations — measures structured concurrency overhead.
+
+```js
+const recursionData = await query(`
+  SELECT benchmarkName, avgTime * 1000 AS avgTimeUs, p50 * 1000 AS p50Us, p95 * 1000 AS p95Us, p99 * 1000 AS p99Us
+  FROM benchmarks
+  WHERE scenario LIKE '%.recursion'
+    AND runtime = '${runtime}'
+    AND releaseTag = '${releaseTag}'
+  ORDER BY avgTimeUs ASC
+`);
+```
+
+<div class="note">Showing data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong></div>
+
+```js
+display(Plot.plot({
+  title: `Recursion Benchmark (${runtime})`,
+  width,
+  height: 350,
+  x: {label: "Library"},
+  y: {label: "Avg Time (μs)", grid: true},
+  color: {legend: true, scheme: "tableau10"},
+  marks: [
+    Plot.barY(recursionData, {
+      x: "benchmarkName",
+      y: "avgTimeUs",
+      fill: "benchmarkName",
+      sort: {x: "y"},
+      tip: true
+    }),
+    Plot.ruleY([0]),
+  ]
+}))
+```
+
+[View detailed recursion benchmarks →](/recursion)
+
+---
+
+## Events: Library Comparison
+
+Event handling and subscription management performance.
+
+```js
+const eventsData = await query(`
+  SELECT benchmarkName, avgTime, p50, p95, p99
+  FROM benchmarks
+  WHERE scenario LIKE '%.events'
+    AND runtime = '${runtime}'
+    AND releaseTag = '${releaseTag}'
+  ORDER BY avgTime ASC
+`);
+```
+
+```js
+display(Plot.plot({
+  title: `Events Benchmark (${runtime})`,
+  width,
+  height: 350,
+  x: {label: "Library"},
+  y: {label: "Avg Time (ms)", grid: true},
+  color: {legend: true, scheme: "tableau10"},
+  marks: [
+    Plot.barY(eventsData, {
+      x: "benchmarkName",
+      y: "avgTime",
+      fill: "benchmarkName",
+      sort: {x: "y"},
+      tip: true
+    }),
+    Plot.ruleY([0]),
+  ]
+}))
+```
+
+[View detailed events benchmarks →](/events)
+
+---
+
+## Effection Performance Over Releases
+
+Track how Effection's performance has evolved across releases.
+
+```js
 const scenarioInput = Inputs.select(["recursion", "events"], {label: "Scenario", value: "recursion"});
 const scenario = Generators.input(scenarioInput);
 ```
 
-```js
-const runtimeInput = Inputs.select(["node", "deno", "playwright-chromium"], {label: "Runtime", value: "node"});
-const runtime = Generators.input(runtimeInput);
-```
-
-<div class="grid grid-cols-2">
-  <div class="card">${scenarioInput}</div>
-  <div class="card">${runtimeInput}</div>
-</div>
-
-## Performance Over Releases
-
-Average, p50, p95, and p99 latency for **${scenario}** on **${runtime}** across all releases.
+<div class="card">${scenarioInput}</div>
 
 ```js
-const perfOverReleases = await query(`
+const effectionData = await query(`
   SELECT releaseTag, avgTime, p50, p95, p99
   FROM benchmarks
-  WHERE scenario = '${scenario}' AND runtime = '${runtime}'
+  WHERE benchmarkName = 'effection'
+    AND scenario = 'effection.${scenario}'
+    AND runtime = '${runtime}'
   ORDER BY semver(releaseTag)
 `);
 ```
 
 ```js
 display(Plot.plot({
-  title: `Latency by Release (${scenario}, ${runtime})`,
+  title: `Effection ${scenario} Latency Over Releases (${runtime})`,
   width,
   height: 400,
   x: {label: "Release", type: "point"},
   y: {label: "Time (ms)", grid: true},
   marks: [
-    Plot.line(perfOverReleases, {x: "releaseTag", y: "avgTime", stroke: "steelblue", strokeWidth: 2, tip: true}),
-    Plot.dot(perfOverReleases, {x: "releaseTag", y: "avgTime", fill: "steelblue"}),
-    Plot.line(perfOverReleases, {x: "releaseTag", y: "p50", stroke: "green", strokeWidth: 2, tip: true}),
-    Plot.dot(perfOverReleases, {x: "releaseTag", y: "p50", fill: "green"}),
-    Plot.line(perfOverReleases, {x: "releaseTag", y: "p95", stroke: "orange", strokeWidth: 2, tip: true}),
-    Plot.dot(perfOverReleases, {x: "releaseTag", y: "p95", fill: "orange"}),
-    Plot.line(perfOverReleases, {x: "releaseTag", y: "p99", stroke: "red", strokeWidth: 2, tip: true}),
-    Plot.dot(perfOverReleases, {x: "releaseTag", y: "p99", fill: "red"}),
+    Plot.line(effectionData, {x: "releaseTag", y: "avgTime", stroke: "steelblue", strokeWidth: 2, tip: true}),
+    Plot.dot(effectionData, {x: "releaseTag", y: "avgTime", fill: "steelblue"}),
+    Plot.line(effectionData, {x: "releaseTag", y: "p50", stroke: "green", strokeWidth: 2}),
+    Plot.line(effectionData, {x: "releaseTag", y: "p95", stroke: "orange", strokeWidth: 2}),
+    Plot.line(effectionData, {x: "releaseTag", y: "p99", stroke: "red", strokeWidth: 2}),
   ]
 }))
 ```
@@ -139,75 +234,94 @@ display(Plot.plot({
   <span style="color: red;">&#9679; p99</span>
 </div>
 
-## Runtime Comparison (Latest Release)
+---
 
-Comparing average latency across runtimes for **${scenario}** on the latest release.
+## All Libraries Over Releases
+
+Compare how all libraries perform across Effection releases for the selected scenario.
 
 ```js
-const runtimeComparison = await query(`
-  SELECT runtime, avgTime, minTime, maxTime, p50, p95, p99
+// Map scenario type to all relevant scenario names
+const scenarioNames = scenario === "recursion" 
+  ? "'effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion'"
+  : "'effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events'";
+
+const allLibrariesData = await query(`
+  SELECT releaseTag, benchmarkName, avgTime
   FROM benchmarks
-  WHERE scenario = '${scenario}'
-    AND releaseTag = (SELECT releaseTag FROM benchmarks ORDER BY semver(releaseTag) DESC LIMIT 1)
-  ORDER BY runtime
+  WHERE scenario IN (${scenarioNames})
+    AND runtime = '${runtime}'
+  ORDER BY semver(releaseTag), benchmarkName
 `);
 ```
 
 ```js
 display(Plot.plot({
-  title: `Runtime Comparison — ${scenario} (latest release)`,
+  title: `All Libraries — ${scenario} (${runtime})`,
+  width,
+  height: 450,
+  x: {label: "Release", type: "point"},
+  y: {label: "Avg Time (ms)", grid: true},
+  color: {legend: true, scheme: "tableau10"},
+  marks: [
+    Plot.line(allLibrariesData, {
+      x: "releaseTag",
+      y: "avgTime",
+      stroke: "benchmarkName",
+      strokeWidth: 2
+    }),
+    Plot.dot(allLibrariesData, {
+      x: "releaseTag",
+      y: "avgTime",
+      fill: "benchmarkName",
+      tip: true
+    }),
+  ]
+}))
+```
+
+---
+
+## Runtime Comparison
+
+Compare performance across runtimes for Effection.
+
+```js
+const runtimeComparisonData = await query(`
+  SELECT runtime, scenario, avgTime, p50, p95, p99
+  FROM benchmarks
+  WHERE benchmarkName = 'effection'
+    AND releaseTag = '${releaseTag}'
+  ORDER BY scenario, runtime
+`);
+```
+
+```js
+display(Plot.plot({
+  title: `Effection Runtime Comparison (release ${releaseTag})`,
   width,
   height: 400,
   x: {label: "Runtime"},
-  y: {label: "Time (ms)", grid: true},
+  y: {label: "Avg Time (ms)", grid: true},
+  fx: {label: "Scenario"},
+  color: {legend: true},
   marks: [
-    Plot.barY(runtimeComparison, {x: "runtime", y: "avgTime", fill: "steelblue", tip: true}),
-    Plot.barY(runtimeComparison, {x: "runtime", y: "p95", fill: "orange", fillOpacity: 0.5, tip: true}),
-    Plot.barY(runtimeComparison, {x: "runtime", y: "p99", fill: "red", fillOpacity: 0.3, tip: true}),
+    Plot.barY(runtimeComparisonData, {
+      x: "runtime",
+      y: "avgTime",
+      fx: "scenario",
+      fill: "runtime",
+      tip: true
+    }),
     Plot.ruleY([0]),
   ]
 }))
 ```
 
-## Detailed Data
+---
 
-```js
-const allData = await query(`
-  SELECT releaseTag, runtime, scenario, avgTime, minTime, maxTime, stdDev, p50, p95, p99
-  FROM benchmarks
-  WHERE scenario = '${scenario}'
-  ORDER BY semver(releaseTag), runtime
-`);
-```
+## Explore More
 
-```js
-display(Inputs.table(allData))
-```
-
-## All Runtimes Over Releases
-
-Average latency for **${scenario}** across all runtimes and releases.
-
-```js
-const allRuntimes = await query(`
-  SELECT releaseTag, runtime, avgTime
-  FROM benchmarks
-  WHERE scenario = '${scenario}'
-  ORDER BY semver(releaseTag), runtime
-`);
-```
-
-```js
-display(Plot.plot({
-  title: `All Runtimes — ${scenario}`,
-  width,
-  height: 400,
-  x: {label: "Release", type: "point"},
-  y: {label: "Avg Time (ms)", grid: true},
-  color: {legend: true},
-  marks: [
-    Plot.line(allRuntimes, {x: "releaseTag", y: "avgTime", stroke: "runtime", strokeWidth: 2, tip: true}),
-    Plot.dot(allRuntimes, {x: "releaseTag", y: "avgTime", fill: "runtime"}),
-  ]
-}))
-```
+- [Recursion Benchmarks](/recursion) - Deep dive into nested async operations
+- [Events Benchmarks](/events) - Deep dive into event handling performance
+- [Effection Examples](/examples) - Learn Effection patterns

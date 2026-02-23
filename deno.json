@@ -17,9 +17,11 @@
     "clean": "rm -rf src/.observablehq/cache",
     "dev": "deno run -A main.tsx",
     "start": "deno run -A main.tsx",
-    "check": "deno check main.tsx plugins/**/*.ts context/**/*.ts routes/**/*.ts",
+    "check": "deno check main.tsx plugins/**/*.ts context/**/*.ts routes/**/*.ts cli/**/*.ts",
     "lint": "deno lint",
-    "fmt": "deno fmt"
+    "fmt": "deno fmt",
+    "bench": "deno run -A cli/main.ts",
+    "bench:check": "deno check cli/**/*.ts"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "dom.iterable", "dom"],
@@ -28,6 +30,14 @@
   },
   "imports": {
     "effection": "jsr:@effection/effection@^3.6.1",
+    "@effectionx/process": "npm:@effectionx/process@^0.5.0",
+    "@effectionx/task-buffer": "npm:@effectionx/task-buffer@^1.3.1",
+    "configliere": "jsr:@frontside/configliere@^0.1.0",
+    "zod": "npm:zod@^3.24.0",
+    "@std/fs": "jsr:@std/fs@^1.0.0",
+    "rxjs": "npm:rxjs@^7.8.1",
+    "effect": "npm:effect@^3.14.0",
+    "co": "npm:co@^4.6.0",
     "revolution": "https://deno.land/x/revolution@0.8.0/mod.ts",
     "revolution/jsx-runtime": "https://deno.land/x/revolution@0.8.0/jsx-runtime.ts",
     "@libs/xml": "jsr:@libs/xml@^7.0.3",

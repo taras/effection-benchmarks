@@ -5,6 +5,8 @@ export default {
   theme: "dashboard",
   pages: [
     { name: "Overview", path: "/" },
-    { name: "Effection Examples", path: "/examples" },
+    { name: "Recursion", path: "/recursion" },
+    { name: "Events", path: "/events" },
+    { name: "Examples", path: "/examples" },
   ],
 };

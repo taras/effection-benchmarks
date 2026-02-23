@@ -1,0 +1,188 @@
+name: Benchmark
+
+on:
+  # Weekly schedule (Sunday at 00:00 UTC)
+  schedule:
+    - cron: '0 0 * * 0'
+  
+  # Manual trigger with inputs
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Effection version to benchmark (e.g., 4.0.0). Leave empty to benchmark all versions from config.'
+        required: false
+        type: string
+      runtime:
+        description: 'Runtime to benchmark'
+        required: false
+        type: choice
+        options:
+          - all
+          - node
+          - deno
+          - bun
+        default: 'all'
+      repeat:
+        description: 'Number of benchmark iterations'
+        required: false
+        type: number
+        default: 10
+      depth:
+        description: 'Recursion depth for scenarios'
+        required: false
+        type: number
+        default: 100
+
+# Ensure only one benchmark run at a time
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # Prepare the benchmark matrix
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+      runtimes: ${{ steps.runtimes.outputs.runtimes }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine versions to benchmark
+        id: versions
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            # Single version from input
+            echo "versions=[\"${{ inputs.version }}\"]" >> $GITHUB_OUTPUT
+          else
+            # All versions from config
+            versions=$(jq -c '.effectionVersions' benchmark.config.json)
+            echo "versions=$versions" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Determine runtimes to benchmark
+        id: runtimes
+        run: |
+          runtime="${{ inputs.runtime }}"
+          if [ "$runtime" = "all" ] || [ -z "$runtime" ]; then
+            echo 'runtimes=["node", "deno", "bun"]' >> $GITHUB_OUTPUT
+          else
+            echo "runtimes=[\"$runtime\"]" >> $GITHUB_OUTPUT
+          fi
+
+  # Run benchmarks for each version/runtime combination
+  benchmark:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.prepare.outputs.versions) }}
+        runtime: ${{ fromJson(needs.prepare.outputs.runtimes) }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Install Deno (always needed as the CLI runs on Deno)
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Install Node.js (required for npm install in the workspace)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      # Install Bun for Bun runtime
+      - name: Setup Bun
+        if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      # Reduce variance on Linux runners
+      - name: Configure runner for benchmarks
+        run: |
+          # Stop unnecessary services to reduce noise
+          sudo systemctl stop snapd.service snapd.socket || true
+          sudo systemctl stop unattended-upgrades || true
+          
+          # Show CPU info for debugging
+          lscpu | grep -E "Model name|CPU\(s\)|Thread"
+      
+      # Run benchmarks
+      - name: Run benchmarks
+        env:
+          REPEAT: ${{ github.event.inputs.repeat }}
+          DEPTH: ${{ github.event.inputs.depth }}
+        run: |
+          deno run -A cli/main.ts run \
+            --release ${{ matrix.version }} \
+            --runtime ${{ matrix.runtime }} \
+            --repeat ${REPEAT:-10} \
+            --depth ${DEPTH:-100} \
+            --warmup 3
+      
+      # Upload results as artifact
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.version }}-${{ matrix.runtime }}
+          path: data/json/*.json
+          retention-days: 30
+
+  # Aggregate results and commit
+  aggregate:
+    needs: benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history for proper git operations
+          fetch-depth: 0
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      # Download all benchmark artifacts
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: benchmark-*
+      
+      # Move results to data/json
+      - name: Aggregate results
+        run: |
+          mkdir -p data/json
+          find artifacts -name "*.json" -exec cp {} data/json/ \;
+          echo "Aggregated $(ls data/json/*.json 2>/dev/null | wc -l) result files"
+          ls -la data/json/
+      
+      # Generate Parquet file
+      # Commit and push results
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add data/json/*.json
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add benchmark results [skip ci]
+
+            Versions: ${{ needs.prepare.outputs.versions }}
+            Runtimes: ${{ needs.prepare.outputs.runtimes }}
+            Triggered by: ${{ github.event_name }}"
+            
+            git push
+          fi
