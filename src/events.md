@@ -2,6 +2,33 @@
 
 Compare event handling and subscription management performance across libraries.
 
+
+## What This Benchmark Measures
+
+This benchmark tests **event handling overhead** — how much cost each library adds on top of native `EventTarget`.
+
+Each scenario:
+1. Creates a recursive chain of `EventTarget` listeners (depth configurable, default 100)
+2. Dispatches 100 events at the root
+3. Each layer forwards events to its child `EventTarget`
+4. Triggers cancellation to tear down **all** listeners at every level
+
+### Fair Comparison: All Libraries Use Native EventTarget
+
+| Library | Event Source | Subscription API | Cleanup |
+|---------|--------------|------------------|---------|
+| **addEventListener** | `EventTarget` | Native `addEventListener` | `removeEventListener` on abort |
+| **effection** | `EventTarget` | `on()` + `each()` | Structured concurrency (halt) |
+| **rxjs** | `EventTarget` | `fromEvent()` | `unsubscribe()` via `takeUntil` |
+| **effect** | `EventTarget` | `Stream.fromEventListener()` | Fiber interruption |
+
+The **addEventListener** baseline shows the raw cost of native event handling with manual cleanup. The reactive libraries add abstraction for:
+- **Automatic cleanup** — listeners removed when cancelled
+- **Subscription tracking** — knowing what's active
+- **Composability** — transforming/chaining event streams
+
+The benchmark measures how much overhead each abstraction adds.
+
 **Libraries compared:** `effection`, `rxjs`, `effect`, `addEventListener`
 
 ## Source Code
