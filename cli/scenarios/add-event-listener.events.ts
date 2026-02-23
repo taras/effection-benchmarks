@@ -73,6 +73,14 @@ async function recurse(
       subTarget.dispatchEvent(new Event("foo"));
     };
     target.addEventListener("foo", handler);
+
+    // Add cleanup on abort (matching depth === 0 pattern for parity)
+    abort = () => {
+      target.removeEventListener("foo", handler!);
+      signal.removeEventListener("abort", abort!);
+    };
+    signal.addEventListener("abort", abort);
+
     await subPromise;
   } else {
     promise = new Promise<void>((r) => (resolve = r));

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "releaseTag": "4.0.0",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-02-23T00:02:23.662Z",
+    "runner": {
+      "os": "darwin",
+      "arch": "aarch64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    }
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "stats": {
+        "avgTime": 2.8976665999999938,
+        "minTime": 2.429290999999978,
+        "maxTime": 3.6124579999999753,
+        "stdDev": 0.36047987848011626,
+        "p50": 2.8107499999999845,
+        "p95": 3.6124579999999753,
+        "p99": 3.6124579999999753
+      }
+    }
+  ]
+}
