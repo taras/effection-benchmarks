@@ -5,7 +5,6 @@
  */
 
 import type { Operation } from "effection";
-import type { BenchmarkStats } from "../lib/schema.ts";
 
 /**
  * A benchmark scenario function.
@@ -45,8 +44,8 @@ export interface MeasureOpts {
 export interface ScenarioResult {
   /** Scenario name */
   name: string;
-  /** Computed statistics */
-  stats: BenchmarkStats;
+  /** Raw timing samples in milliseconds */
+  samples: number[];
 }
 
 /**

@@ -7,8 +7,6 @@
  */
 
 import { scoped, type Operation } from "effection";
-import { calculateStats, toStatsOnly } from "../lib/stats.ts";
-import type { BenchmarkStats } from "../lib/schema.ts";
 import type { ScenarioFn, MeasureOpts } from "./types.ts";
 
 /**
@@ -16,12 +14,12 @@ import type { ScenarioFn, MeasureOpts } from "./types.ts";
  *
  * @param scenarioFn - The scenario function to measure
  * @param opts - Measurement options
- * @returns Computed statistics
+ * @returns Raw timing samples in milliseconds
  */
 export function* measure(
   scenarioFn: ScenarioFn,
   opts: MeasureOpts,
-): Operation<BenchmarkStats> {
+): Operation<number[]> {
   // Warmup runs (discard results)
   for (let i = 0; i < opts.warmup; i++) {
     yield* scoped(() => scenarioFn(opts.depth));
@@ -36,6 +34,5 @@ export function* measure(
     times.push(elapsed);
   }
 
-  const fullStats = calculateStats(times);
-  return toStatsOnly(fullStats);
+  return times;
 }

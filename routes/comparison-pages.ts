@@ -170,6 +170,14 @@ await conn.query(\`
     FROM parsed
   )
 \`);
+
+// Register percentile macro for computing percentiles from sample arrays
+// Uses 1-based ceiling index (same logic as cli/lib/stats.ts)
+await conn.query(\`
+  CREATE OR REPLACE MACRO pctl(arr, p) AS (
+    list_sort(arr)[GREATEST(1, CAST(CEIL(len(arr) * p / 100.0) AS INTEGER))]
+  )
+\`);
 \`\`\`
 
 \`\`\`js
@@ -261,7 +269,15 @@ const scale = ${scale};
 const unit = "${unit}";
 
 const comparisonData = (await query(\`
-  SELECT benchmarkName, avgTime, p50, p95, p99, stdDev
+  SELECT 
+    benchmarkName,
+    list_avg(samples) AS avgTime,
+    list_min(samples) AS minTime,
+    list_max(samples) AS maxTime,
+    list_stddev_pop(samples) AS stdDev,
+    pctl(samples, 50) AS p50,
+    pctl(samples, 95) AS p95,
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE scenario IN (${scenarioNames})
     AND runtime = '\${runtime}'
@@ -341,7 +357,13 @@ How each library's performance has changed across Effection releases.
 
 \`\`\`js
 const releaseData = (await query(\`
-  SELECT releaseTag, benchmarkName, avgTime, p50, p95, p99
+  SELECT 
+    releaseTag, 
+    benchmarkName, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE scenario IN (${scenarioNames})
     AND runtime = '\${runtime}'
@@ -388,7 +410,13 @@ Compare performance across runtimes for each library.
 
 \`\`\`js
 const runtimeCompData = (await query(\`
-  SELECT benchmarkName, runtime, avgTime, p50, p95, p99
+  SELECT 
+    benchmarkName, 
+    runtime, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE scenario IN (${scenarioNames})
     AND releaseTag = '\${releaseTag}'
@@ -430,7 +458,18 @@ display(Plot.plot({
 
 \`\`\`js
 const allData = await query(\`
-  SELECT releaseTag, runtime, benchmarkName, scenario, avgTime, minTime, maxTime, stdDev, p50, p95, p99
+  SELECT 
+    releaseTag, 
+    runtime, 
+    benchmarkName, 
+    scenario, 
+    list_avg(samples) AS avgTime, 
+    list_min(samples) AS minTime, 
+    list_max(samples) AS maxTime, 
+    list_stddev_pop(samples) AS stdDev, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
   WHERE scenario IN (${scenarioNames})
   ORDER BY semver(releaseTag), runtime, benchmarkName

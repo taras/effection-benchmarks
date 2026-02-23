@@ -11,6 +11,7 @@ import { main } from "effection";
 import { parseHarnessArgs, validateHarnessArgs } from "./args.ts";
 import { measure } from "./measure.ts";
 import { getScenario, listScenarios } from "../scenarios/mod.ts";
+import { calculateStats } from "../lib/stats.ts";
 import type { HarnessOutput, ScenarioResult } from "./types.ts";
 
 // Declare process for Node.js/Bun compatibility
@@ -72,7 +73,7 @@ main(function* () {
   }
 
   // Run the scenario
-  const stats = yield* measure(scenario.run, {
+  const samples = yield* measure(scenario.run, {
     repeat: args.repeat,
     warmup: args.warmup,
     depth: args.depth,
@@ -81,7 +82,7 @@ main(function* () {
   // Build result
   const result: ScenarioResult = {
     name: scenario.library,
-    stats,
+    samples,
   };
 
   // Output
@@ -91,9 +92,12 @@ main(function* () {
     };
     console.log(JSON.stringify(output));
   } else {
+    // For human-readable output, compute and display stats
+    const stats = calculateStats(samples);
     console.log(`Scenario: ${scenario.name}`);
     console.log(`Library: ${scenario.library}`);
-    console.log(`Stats:`);
+    console.log(`Samples: ${samples.length}`);
+    console.log(`Stats (computed):`);
     console.log(`  avgTime: ${stats.avgTime.toFixed(3)} ms`);
     console.log(`  minTime: ${stats.minTime.toFixed(3)} ms`);
     console.log(`  maxTime: ${stats.maxTime.toFixed(3)} ms`);
