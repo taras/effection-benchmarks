@@ -60,35 +60,23 @@ function generatePackageJson(config: WorkspaceConfig): string {
 
 /**
  * Generate deno.json for Deno runtime compatibility.
- * Enables node_modules resolution for bare specifiers.
- * Includes import map to resolve @effectionx/inline to local stub since
- * Deno's npm resolver cannot handle pkg.pr.new URLs.
+ * 
+ * Uses esm.sh to load @effectionx/inline since Deno's npm resolver
+ * cannot handle pkg.pr.new URLs directly. The esm.sh CDN supports
+ * pkg.pr.new packages via the /pr/ prefix.
+ * 
+ * The ?external=effection flag tells esm.sh to leave the effection
+ * import as a bare specifier, which we then map to npm:effection@{version}
+ * so it resolves to the correct version from node_modules.
  */
-function generateDenoJson(): string {
+function generateDenoJson(effectionVersion: string): string {
   return JSON.stringify({
     nodeModulesDir: "auto",
     imports: {
-      "@effectionx/inline": "./inline-stub.ts",
+      "@effectionx/inline": "https://esm.sh/pr/thefrontside/effectionx/@effectionx/inline@117?external=effection",
+      "effection": `npm:effection@${effectionVersion}`,
     },
   }, null, 2);
-}
-
-/**
- * Generate a stub module for @effectionx/inline.
- * This allows Deno to parse scenarios that import inline() without
- * actually resolving the pkg.pr.new URL. The inline scenario itself
- * is skipped at runtime for Deno.
- */
-function generateInlineStub(): string {
-  return `/**
- * Stub for @effectionx/inline.
- * This module exists so Deno can parse the scenario registry.
- * The effection-inline.recursion scenario is skipped for Deno at runtime.
- */
-export function inline<T>(_operation: unknown): unknown {
-  throw new Error("@effectionx/inline stub: this scenario should not run on Deno");
-}
-`;
 }
 
 /**
@@ -249,11 +237,8 @@ export function useWorkspace(config: WorkspaceConfig): Operation<Workspace> {
       // Write package.json (always, in case versions changed in cache)
       yield* call(() => Deno.writeTextFile(`${dir}/package.json`, generatePackageJson(config)));
 
-      // Write deno.json for Deno runtime support
-      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson()));
-
-      // Write inline stub for Deno (since pkg.pr.new URLs aren't supported)
-      yield* call(() => Deno.writeTextFile(`${dir}/inline-stub.ts`, generateInlineStub()));
+      // Write deno.json for Deno runtime support (with esm.sh import map for inline)
+      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson(config.effectionVersion)));
 
       // Run npm install if needed
       // Using --legacy-peer-deps to avoid peer dependency conflicts with preview packages

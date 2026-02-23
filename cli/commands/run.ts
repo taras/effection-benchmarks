@@ -122,10 +122,11 @@ const VERSION_RESTRICTED_SCENARIOS: Record<string, ReturnType<typeof parse>> = {
 
 /**
  * Scenarios that are incompatible with certain runtimes.
- * The inline scenario uses a pkg.pr.new URL which Deno's npm resolver cannot handle.
+ * Currently empty - all scenarios work on all runtimes thanks to esm.sh
+ * providing a Deno-compatible way to load pkg.pr.new packages.
  */
 const RUNTIME_INCOMPATIBLE_SCENARIOS: Record<string, RuntimeId[]> = {
-  "effection-inline.recursion": ["deno"],
+  // No runtime-specific restrictions currently
 };
 
 /**
