@@ -47,10 +47,11 @@ const COMPARISON_PAGES: ComparisonPage[] = [
     title: "Recursion Benchmarks",
     description:
       "Compare structured concurrency overhead for deeply nested async operations across libraries.",
-    libraries: ["effection", "rxjs", "effect", "co", "async-await"],
+    libraries: ["effection", "effection-inline", "rxjs", "effect", "co", "async-await"],
     scenarioType: "recursion",
     sourceFiles: {
       effection: "effection.recursion.ts",
+      "effection-inline": "effection-inline.recursion.ts",
       rxjs: "rxjs.recursion.ts",
       effect: "effect.recursion.ts",
       co: "co.recursion.ts",

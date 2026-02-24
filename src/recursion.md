@@ -2,13 +2,14 @@
 
 Compare structured concurrency overhead for deeply nested async operations across libraries.
 
-**Libraries compared:** `effection`, `rxjs`, `effect`, `co`, `async-await`
+**Libraries compared:** `effection`, `effection-inline`, `rxjs`, `effect`, `co`, `async-await`
 
 ## Source Code
 
 View the benchmark implementations on GitHub:
 
 - [effection](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection.recursion.ts)
+- [effection-inline](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection-inline.recursion.ts)
 - [rxjs](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/rxjs.recursion.ts)
 - [effect](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effect.recursion.ts)
 - [co](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/co.recursion.ts)
@@ -81,6 +82,14 @@ await conn.query(`
     FROM parsed
   )
 `);
+
+// Register percentile macro for computing percentiles from sample arrays
+// Uses 1-based ceiling index (same logic as cli/lib/stats.ts)
+await conn.query(`
+  CREATE OR REPLACE MACRO pctl(arr, p) AS (
+    list_sort(arr)[GREATEST(1, CAST(CEIL(len(arr) * p / 100.0) AS INTEGER))]
+  )
+`);
 ```
 
 ```js
@@ -100,7 +109,7 @@ async function query(sql) {
 // Get available runtimes from the data
 const runtimes = await query(`
   SELECT DISTINCT runtime FROM benchmarks 
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY runtime
 `);
 const runtimeOptions = runtimes.map(r => r.runtime);
@@ -110,7 +119,7 @@ const runtime = Generators.input(runtimeInput);
 // Get available Effection releases from the data
 const releases = await query(`
   SELECT DISTINCT releaseTag FROM benchmarks 
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY semver(releaseTag) DESC
 `);
 const releaseOptions = releases.map(r => r.releaseTag);
@@ -128,14 +137,32 @@ const releaseTag = Generators.input(releaseInput);
 Average latency comparison across all libraries for the selected Effection release.
 
 ```js
-const comparisonData = await query(`
-  SELECT benchmarkName, avgTime, p50, p95, p99, stdDev
+// Scale factor for Y-axis display (1000 = μs)
+const scale = 1000;
+const unit = "μs";
+
+const comparisonData = (await query(`
+  SELECT 
+    benchmarkName,
+    list_avg(samples) AS avgTime,
+    list_min(samples) AS minTime,
+    list_max(samples) AS maxTime,
+    list_stddev_pop(samples) AS stdDev,
+    pctl(samples, 50) AS p50,
+    pctl(samples, 95) AS p95,
+    pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
     AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
   ORDER BY avgTime ASC
-`);
+`)).map(d => ({
+  ...d,
+  avgTime: d.avgTime * scale,
+  p50: d.p50 * scale,
+  p95: d.p95 * scale,
+  p99: d.p99 * scale,
+}));
 ```
 
 <div class="note">Showing data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong></div>
@@ -146,7 +173,7 @@ display(Plot.plot({
   width,
   height: 400,
   x: {label: "Library"},
-  y: {label: "Time (ms)", grid: true},
+  y: {label: `Time (${unit})`, grid: true},
   color: {legend: true, scheme: "tableau10"},
   marks: [
     Plot.barY(comparisonData, {
@@ -179,7 +206,7 @@ display(Plot.plot({
   width,
   height: 400,
   x: {label: "Library"},
-  y: {label: "Time (ms)", grid: true},
+  y: {label: `Time (${unit})`, grid: true},
   fx: {label: "Metric"},
   color: {legend: true, scheme: "tableau10"},
   marks: [
@@ -202,13 +229,25 @@ display(Plot.plot({
 How each library's performance has changed across Effection releases.
 
 ```js
-const releaseData = await query(`
-  SELECT releaseTag, benchmarkName, avgTime, p50, p95, p99
+const releaseData = (await query(`
+  SELECT 
+    releaseTag, 
+    benchmarkName, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
     AND runtime = '${runtime}'
   ORDER BY semver(releaseTag), benchmarkName
-`);
+`)).map(d => ({
+  ...d,
+  avgTime: d.avgTime * scale,
+  p50: d.p50 * scale,
+  p95: d.p95 * scale,
+  p99: d.p99 * scale,
+}));
 ```
 
 ```js
@@ -217,7 +256,7 @@ display(Plot.plot({
   width,
   height: 450,
   x: {label: "Release", type: "point"},
-  y: {label: "Avg Time (ms)", grid: true},
+  y: {label: `Time (${unit})`, grid: true},
   color: {legend: true, scheme: "tableau10"},
   marks: [
     Plot.line(releaseData, {
@@ -243,13 +282,25 @@ display(Plot.plot({
 Compare performance across runtimes for each library.
 
 ```js
-const runtimeCompData = await query(`
-  SELECT benchmarkName, runtime, avgTime, p50, p95, p99
+const runtimeCompData = (await query(`
+  SELECT 
+    benchmarkName, 
+    runtime, 
+    list_avg(samples) AS avgTime, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
     AND releaseTag = '${releaseTag}'
   ORDER BY benchmarkName, runtime
-`);
+`)).map(d => ({
+  ...d,
+  avgTime: d.avgTime * scale,
+  p50: d.p50 * scale,
+  p95: d.p95 * scale,
+  p99: d.p99 * scale,
+}));
 ```
 
 ```js
@@ -258,7 +309,7 @@ display(Plot.plot({
   width,
   height: 400,
   x: {label: "Library"},
-  y: {label: "Avg Time (ms)", grid: true},
+  y: {label: `Time (${unit})`, grid: true},
   fx: {label: "Runtime"},
   color: {legend: true, scheme: "tableau10"},
   marks: [
@@ -280,9 +331,20 @@ display(Plot.plot({
 
 ```js
 const allData = await query(`
-  SELECT releaseTag, runtime, benchmarkName, scenario, avgTime, minTime, maxTime, stdDev, p50, p95, p99
+  SELECT 
+    releaseTag, 
+    runtime, 
+    benchmarkName, 
+    scenario, 
+    list_avg(samples) AS avgTime, 
+    list_min(samples) AS minTime, 
+    list_max(samples) AS maxTime, 
+    list_stddev_pop(samples) AS stdDev, 
+    pctl(samples, 50) AS p50, 
+    pctl(samples, 95) AS p95, 
+    pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY semver(releaseTag), runtime, benchmarkName
 `);
 ```

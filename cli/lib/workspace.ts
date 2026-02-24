@@ -25,6 +25,7 @@ export interface WorkspaceConfig {
     rxjs: string;
     effect: string;
     co: string;
+    inline: string;
   };
   /** Use persistent cache directory instead of temp dir */
   useCache?: boolean;
@@ -48,6 +49,7 @@ function generatePackageJson(config: WorkspaceConfig): string {
     private: true,
     dependencies: {
       effection: config.effectionVersion,
+      "@effectionx/inline": config.comparisonVersions.inline,
       rxjs: config.comparisonVersions.rxjs,
       effect: config.comparisonVersions.effect,
       co: config.comparisonVersions.co,
@@ -58,10 +60,23 @@ function generatePackageJson(config: WorkspaceConfig): string {
 
 /**
  * Generate deno.json for Deno runtime compatibility.
- * Enables node_modules resolution for bare specifiers.
+ * 
+ * Uses esm.sh to load @effectionx/inline since Deno's npm resolver
+ * cannot handle pkg.pr.new URLs directly. The esm.sh CDN supports
+ * pkg.pr.new packages via the /pr/ prefix.
+ * 
+ * The ?external=effection flag tells esm.sh to leave the effection
+ * import as a bare specifier, which we then map to npm:effection@{version}
+ * so it resolves to the correct version from node_modules.
  */
-function generateDenoJson(): string {
-  return JSON.stringify({ nodeModulesDir: "auto" }, null, 2);
+function generateDenoJson(effectionVersion: string): string {
+  return JSON.stringify({
+    nodeModulesDir: "auto",
+    imports: {
+      "@effectionx/inline": "https://esm.sh/pr/thefrontside/effectionx/@effectionx/inline@117?external=effection",
+      "effection": `npm:effection@${effectionVersion}`,
+    },
+  }, null, 2);
 }
 
 /**
@@ -71,6 +86,7 @@ function generateDenoJson(): string {
 async function computeCacheKey(config: WorkspaceConfig): Promise<string> {
   const data = JSON.stringify({
     effection: config.effectionVersion,
+    inline: config.comparisonVersions.inline,
     rxjs: config.comparisonVersions.rxjs,
     effect: config.comparisonVersions.effect,
     co: config.comparisonVersions.co,
@@ -221,12 +237,13 @@ export function useWorkspace(config: WorkspaceConfig): Operation<Workspace> {
       // Write package.json (always, in case versions changed in cache)
       yield* call(() => Deno.writeTextFile(`${dir}/package.json`, generatePackageJson(config)));
 
-      // Write deno.json for Deno runtime support
-      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson()));
+      // Write deno.json for Deno runtime support (with esm.sh import map for inline)
+      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson(config.effectionVersion)));
 
       // Run npm install if needed
+      // Using --legacy-peer-deps to avoid peer dependency conflicts with preview packages
       if (needsNpmInstall) {
-        const { code, stderr } = yield* exec("npm install --silent", { cwd: dir }).join();
+        const { code, stderr } = yield* exec("npm install --silent --legacy-peer-deps", { cwd: dir }).join();
         if (code !== 0) {
           throw new Error(`npm install failed (exit code ${code}): ${stderr}`);
         }
