@@ -151,6 +151,10 @@ export function* invokeHarness(opts: HarnessInvokeOpts): Operation<BenchmarkResu
         warmup: opts.scenarioOpts.warmup,
         depth: opts.scenarioOpts.depth,
       },
+      // Branch metadata (only present when source is "branch")
+      ...(opts.scenarioOpts.source && { source: opts.scenarioOpts.source }),
+      ...(opts.scenarioOpts.branchName && { branchName: opts.scenarioOpts.branchName }),
+      ...(opts.scenarioOpts.commitHash && { commitHash: opts.scenarioOpts.commitHash }),
     },
     results: harnessOutput.results,
   };

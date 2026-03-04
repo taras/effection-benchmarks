@@ -8,7 +8,7 @@
  */
 
 import type { Operation } from "effection";
-import type { BenchmarkResult, RuntimeId } from "../schema.ts";
+import type { BenchmarkResult, BenchmarkSource, RuntimeId } from "../schema.ts";
 import type { Workspace } from "../workspace.ts";
 import { nodeAdapter } from "./node.ts";
 import { denoAdapter } from "./deno.ts";
@@ -36,6 +36,12 @@ export interface ScenarioOpts {
   };
   /** Workspace with npm-installed packages */
   workspace: Workspace;
+  /** Source of the Effection package: "npm" (default) or "branch" */
+  source?: BenchmarkSource;
+  /** Git branch name (only when source is "branch") */
+  branchName?: string;
+  /** Git commit hash (only when source is "branch") */
+  commitHash?: string;
 }
 
 /**
