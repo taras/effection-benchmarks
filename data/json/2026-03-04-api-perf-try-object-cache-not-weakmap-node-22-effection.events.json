@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-04T03:18:17.351Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "effection.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "effection",
+      "samples": [
+        216.18847200000005,
+        244.188091,
+        256.37119299999995,
+        258.85162200000013,
+        270.7252269999999,
+        240.04265299999997,
+        240.73146600000018,
+        251.00655000000006,
+        256.30044799999996,
+        221.0560230000001
+      ]
+    }
+  ]
+}

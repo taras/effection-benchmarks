@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-04T03:18:32.374Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "samples": [
+        3.148734999999988,
+        3.0094349999999963,
+        3.7463710000000106,
+        1.5450930000000085,
+        2.8491260000000125,
+        4.374452000000019,
+        2.7098269999999616,
+        2.3233850000000302,
+        1.2110800000000381,
+        1.2580979999999045
+      ]
+    }
+  ]
+}

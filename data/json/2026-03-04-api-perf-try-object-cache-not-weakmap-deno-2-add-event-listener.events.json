@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-03-04T03:18:29.439Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "samples": [
+        4.633059000000003,
+        4.202758999999986,
+        4.03852999999998,
+        3.6485870000000205,
+        4.164046999999982,
+        3.6451400000000262,
+        3.513994000000025,
+        8.143876999999975,
+        5.339409000000046,
+        6.0255599999999845
+      ]
+    }
+  ]
+}

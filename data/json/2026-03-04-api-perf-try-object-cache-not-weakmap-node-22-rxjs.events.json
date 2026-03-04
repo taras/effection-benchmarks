@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-04T03:18:19.852Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "rxjs.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "rxjs",
+      "samples": [
+        117.96670299999994,
+        117.85313099999985,
+        114.92110899999989,
+        117.01014899999996,
+        116.49168699999996,
+        112.92121399999996,
+        115.3325510000002,
+        114.86396100000002,
+        115.06802300000004,
+        118.0082789999999
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-03-04T03:18:12.692Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "effection.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "effection",
+      "samples": [
+        1.4339399999998932,
+        1.4589370000001054,
+        1.3657720000001063,
+        1.2106800000001385,
+        1.109339000000091,
+        1.0755549999998948,
+        1.10536100000013,
+        3.1802880000000187,
+        1.389216000000033,
+        1.4946840000000066
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-03-04T03:18:28.813Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "co.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "co",
+      "samples": [
+        0.30126700000002415,
+        0.3517020000000173,
+        0.41875799999999685,
+        0.2806190000000015,
+        0.4432639999999992,
+        0.3032310000000109,
+        0.29770099999998934,
+        0.2588269999999966,
+        0.30215899999998896,
+        0.16822700000000168
+      ]
+    }
+  ]
+}

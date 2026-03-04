@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "bun",
+    "runtimeMajorVersion": 1,
+    "timestamp": "2026-03-04T03:18:21.452Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "rxjs.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "rxjs",
+      "samples": [
+        1.0757729999999697,
+        1.2404030000000148,
+        0.8460410000000138,
+        0.8773900000000481,
+        0.8677319999999895,
+        0.6900070000000369,
+        0.7245629999999892,
+        0.7735739999999964,
+        0.6878429999999867,
+        0.4196789999999737
+      ]
+    }
+  ]
+}

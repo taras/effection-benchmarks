@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-04T03:18:31.334Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "co.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "co",
+      "samples": [
+        0.32501700000000255,
+        0.3273810000000026,
+        0.36553200000003017,
+        0.3160700000000247,
+        0.26375200000001087,
+        0.4401110000000017,
+        0.22684299999997393,
+        0.2549759999999992,
+        0.19640599999996766,
+        0.17650899999995318
+      ]
+    }
+  ]
+}

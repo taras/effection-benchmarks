@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "api-perf-try-object-cache-not-weakmap",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-04T03:18:31.812Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "async-await.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "branch",
+    "commitHash": "efab94591821016c832bc8d54d6b1b1fe20ad848"
+  },
+  "results": [
+    {
+      "name": "async-await",
+      "samples": [
+        0.24557900000002064,
+        0.23769299999997884,
+        0.32288299999999026,
+        0.23046999999996842,
+        0.14829700000001367,
+        0.3281519999999887,
+        0.169887000000017,
+        0.12853000000001202,
+        0.11110800000000154,
+        0.10168900000002168
+      ]
+    }
+  ]
+}
