@@ -178,7 +178,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Add benchmark results [skip ci]
+            git commit -m "data: add benchmark results
 
             Versions: ${{ needs.prepare.outputs.versions }}
             Runtimes: ${{ needs.prepare.outputs.runtimes }}
