@@ -216,11 +216,6 @@ jobs:
             echo "No changes to commit"
           else
             SHORT_HASH=$(echo "${{ needs.build.outputs.commit_hash }}" | cut -c1-7)
-            git commit -m "data: add branch benchmark results
-
-Branch: ${{ inputs.branch }}
-Commit: ${{ needs.build.outputs.commit_hash }}
-Triggered by: workflow_dispatch"
-            
+            git commit -m "data: add branch benchmark results for ${{ inputs.branch }} ($SHORT_HASH)"
             git push
           fi
