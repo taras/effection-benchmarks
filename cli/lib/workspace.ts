@@ -29,8 +29,6 @@ export interface WorkspaceConfig {
   };
   /** Use persistent cache directory instead of temp dir */
   useCache?: boolean;
-  /** Path to local Effection tarball (overrides effectionVersion for npm install) */
-  effectionTarball?: string;
 }
 
 /**
@@ -43,18 +41,14 @@ export interface Workspace {
 
 /**
  * Generate package.json content for the benchmark workspace.
- * 
- * When using a tarball, effection is installed via "file:./effection.tgz"
- * instead of an npm version specifier.
  */
-function generatePackageJson(config: WorkspaceConfig, useTarball: boolean): string {
+function generatePackageJson(config: WorkspaceConfig): string {
   const pkg = {
     name: "effection-benchmark-workspace",
     type: "module",
     private: true,
     dependencies: {
-      // Use file reference for tarball, npm version otherwise
-      effection: useTarball ? "file:./effection.tgz" : config.effectionVersion,
+      effection: config.effectionVersion,
       "@effectionx/inline": config.comparisonVersions.inline,
       rxjs: config.comparisonVersions.rxjs,
       effect: config.comparisonVersions.effect,
@@ -74,17 +68,13 @@ function generatePackageJson(config: WorkspaceConfig, useTarball: boolean): stri
  * The ?external=effection flag tells esm.sh to leave the effection
  * import as a bare specifier, which we then map to npm:effection@{version}
  * so it resolves to the correct version from node_modules.
- * 
- * When using a tarball, we use an unversioned npm:effection specifier
- * since the version is whatever is in node_modules from the tarball.
  */
-function generateDenoJson(effectionVersion: string, useTarball: boolean): string {
+function generateDenoJson(effectionVersion: string): string {
   return JSON.stringify({
     nodeModulesDir: "auto",
     imports: {
       "@effectionx/inline": "https://esm.sh/pr/thefrontside/effectionx/@effectionx/inline@117?external=effection",
-      // Unversioned for tarball (uses whatever is in node_modules), versioned for npm
-      "effection": useTarball ? "npm:effection" : `npm:effection@${effectionVersion}`,
+      "effection": `npm:effection@${effectionVersion}`,
     },
   }, null, 2);
 }
@@ -219,7 +209,6 @@ export function useWorkspace(config: WorkspaceConfig): Operation<Workspace> {
     let dir: string;
     let shouldCleanup: boolean;
     let needsNpmInstall: boolean;
-    const useTarball = !!config.effectionTarball;
 
     if (config.useCache) {
       // Cached mode: use persistent directory
@@ -245,16 +234,11 @@ export function useWorkspace(config: WorkspaceConfig): Operation<Workspace> {
     }
 
     try {
-      // Copy tarball into workspace if provided
-      if (config.effectionTarball) {
-        yield* call(() => Deno.copyFile(config.effectionTarball!, `${dir}/effection.tgz`));
-      }
-
       // Write package.json (always, in case versions changed in cache)
-      yield* call(() => Deno.writeTextFile(`${dir}/package.json`, generatePackageJson(config, useTarball)));
+      yield* call(() => Deno.writeTextFile(`${dir}/package.json`, generatePackageJson(config)));
 
       // Write deno.json for Deno runtime support (with esm.sh import map for inline)
-      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson(config.effectionVersion, useTarball)));
+      yield* call(() => Deno.writeTextFile(`${dir}/deno.json`, generateDenoJson(config.effectionVersion)));
 
       // Run npm install if needed
       // Using --legacy-peer-deps to avoid peer dependency conflicts with preview packages

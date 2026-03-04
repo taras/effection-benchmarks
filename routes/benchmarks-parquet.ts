@@ -83,10 +83,6 @@ function* generateParquet(): Operation<Uint8Array> {
       metadata.runner.arch AS runnerArch,
       metadata.scenario AS scenario,
       to_json(metadata.benchmarkParams)::VARCHAR AS benchmarkParams,
-      -- Branch benchmark metadata (null for npm releases)
-      COALESCE(metadata.source, 'npm') AS source,
-      metadata.branchName AS branchName,
-      metadata.commitHash AS commitHash,
       unnest(results).name AS benchmarkName,
       unnest(results).samples AS samples,
       filename AS sourceFile

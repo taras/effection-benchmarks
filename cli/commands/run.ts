@@ -15,7 +15,6 @@ import {
   RuntimeIdSchema,
   SCENARIOS,
   type BenchmarkResult,
-  type BenchmarkSource,
   type RuntimeId,
   type ScenarioName,
   validateBenchmarkConfig,
@@ -80,23 +79,6 @@ const configliere = new Configliere({
     default: false,
     description: "Stop on first failure",
     cli: { switch: true },
-  },
-  // Branch benchmarking options
-  "effection-tarball": {
-    schema: z.string().optional(),
-    description: "Path to local Effection tarball (overrides npm install)",
-  },
-  source: {
-    schema: z.enum(["npm", "branch"]).optional(),
-    description: "Source type: 'npm' (default) or 'branch'",
-  },
-  "branch-name": {
-    schema: z.string().optional(),
-    description: "Git branch name (for branch benchmarks)",
-  },
-  "commit-hash": {
-    schema: z.string().optional(),
-    description: "Git commit hash (for branch benchmarks)",
   },
 });
 
@@ -189,9 +171,6 @@ function* runForRuntime(
     depth: number;
     warmup: number;
     comparisonVersions: { rxjs: string; effect: string; co: string; inline: string };
-    source?: BenchmarkSource;
-    branchName?: string;
-    commitHash?: string;
   },
 ): Operation<BenchmarkResult[]> {
   const adapter = getAdapter(runtime);
@@ -236,9 +215,6 @@ function* runForRuntime(
       depth: opts.depth,
       comparisonVersions: opts.comparisonVersions,
       workspace,
-      source: opts.source,
-      branchName: opts.branchName,
-      commitHash: opts.commitHash,
     });
 
     results.push(result);
@@ -251,33 +227,12 @@ function* runForRuntime(
 }
 
 /**
- * Sanitize a string for use in filenames.
- * Replaces `/` with `~` to handle branch names like "cowboyd/my-feature".
- */
-function sanitizeForFilename(s: string): string {
-  return s.replace(/\//g, "~");
-}
-
-/**
  * Write benchmark result to data/json/.
- * 
- * For branch benchmarks, includes branch name and commit hash in filename.
- * Branch names are sanitized (/ -> ~) for filesystem compatibility.
  */
 function writeResult(result: BenchmarkResult): void {
   const { metadata } = result;
   const date = metadata.timestamp.split("T")[0];
-  
-  // Build filename parts
-  let releaseOrBranch = metadata.releaseTag;
-  if (metadata.source === "branch" && metadata.branchName) {
-    // Use sanitized branch name and short commit hash for branch benchmarks
-    const sanitizedBranch = sanitizeForFilename(metadata.branchName);
-    const shortHash = metadata.commitHash?.slice(0, 7) || "unknown";
-    releaseOrBranch = `branch-${sanitizedBranch}-${shortHash}`;
-  }
-  
-  const filename = `${date}-${releaseOrBranch}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
+  const filename = `${date}-${metadata.releaseTag}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
   const path = `data/json/${filename}`;
 
   Deno.mkdirSync("data/json", { recursive: true });
@@ -307,12 +262,6 @@ export function* runCommand(args: string[]): Operation<number> {
   const runtimes = config.runtime as RuntimeId[];
   const useCache = config["cache-workspace"] as boolean;
   const failFast = config["fail-fast"] as boolean;
-  
-  // Branch benchmark options
-  const effectionTarball = config["effection-tarball"] as string | undefined;
-  const source = (config.source as BenchmarkSource | undefined) ?? (effectionTarball ? "branch" : "npm");
-  const branchName = config["branch-name"] as string | undefined;
-  const commitHash = config["commit-hash"] as string | undefined;
 
   // Load comparison library versions
   const defaultVersions = loadConfig();
@@ -324,12 +273,6 @@ export function* runCommand(args: string[]): Operation<number> {
   };
 
   console.log(`\nRunning benchmarks for Effection ${release}`);
-  if (source === "branch") {
-    console.log(`Source: branch (${branchName || "unknown"} @ ${commitHash?.slice(0, 7) || "unknown"})`);
-    if (effectionTarball) {
-      console.log(`Tarball: ${effectionTarball}`);
-    }
-  }
   console.log(`Runtimes: ${runtimes.join(", ")}`);
   console.log(`Scenarios: ${SCENARIOS.length} total`);
   console.log(`Options: repeat=${config.repeat}, depth=${config.depth}, warmup=${config.warmup}`);
@@ -347,7 +290,6 @@ export function* runCommand(args: string[]): Operation<number> {
     effectionVersion: release,
     comparisonVersions,
     useCache,
-    effectionTarball,
   });
   console.log(`Workspace ready at: ${workspace.path}\n`);
 
@@ -363,9 +305,6 @@ export function* runCommand(args: string[]): Operation<number> {
         depth: config.depth,
         warmup: config.warmup,
         comparisonVersions,
-        source,
-        branchName,
-        commitHash,
       }),
     );
     results.push(r);
