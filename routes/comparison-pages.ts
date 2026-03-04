@@ -17,7 +17,7 @@ import { call, type Operation } from "effection";
  * GitHub base URL for linking to scenario source files.
  */
 const GITHUB_BASE =
-  "https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios";
+  "https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios";
 
 /**
  * Comparison page configuration.

@@ -26,13 +26,15 @@ Examples:
 `.trim();
 
 const RUN_HELP = `
-bench run - Run benchmarks for an Effection release
+bench run - Run benchmarks for an Effection release or branch
 
 Usage:
-  bench run --release <version> --runtime <runtime> [options]
+  bench run --release <version|branch> --runtime <runtime> [options]
 
 Required:
-  --release, -r     Effection npm version to benchmark (e.g., 4.0.0)
+  --release, -r     Version or branch identifier (appears on dashboard charts)
+                    For npm: version like "4.0.2"
+                    For branch: branch name like "api-perf-try-object-cache"
   --runtime         Runtime to benchmark (node, deno, bun). Can be repeated.
 
 Options:
@@ -45,10 +47,21 @@ Options:
   --cache-workspace Cache npm install between runs (default: false)
   --fail-fast       Stop on first runtime failure (default: false)
 
+Branch Benchmarking:
+  --effection-tarball  Path to local Effection tarball (overrides npm install)
+  --source             Source type: 'npm' (default) or 'branch'
+  --commit-hash        Git commit hash (for branch benchmarks)
+
 Examples:
+  # npm release benchmark
   bench run --release 4.0.0 --runtime node
   bench run -r 4.0.2 --runtime node --runtime deno
   bench run --release 4.0.0 --runtime node --repeat 20 --depth 50
+  
+  # Branch benchmark (local tarball)
+  bench run --release api-perf-try-object-cache --runtime deno \\
+    --effection-tarball ./effection.tgz \\
+    --source branch --commit-hash abc1234def5678
 `.trim();
 
 const LIST_RELEASES_HELP = `

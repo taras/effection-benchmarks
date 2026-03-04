@@ -1,0 +1,221 @@
+name: Branch Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Effection branch to benchmark (e.g., api-perf-try-object-cache-not-weakmap)'
+        required: true
+        type: string
+      runtime:
+        description: 'Runtime to benchmark'
+        required: false
+        type: choice
+        options:
+          - all
+          - node
+          - deno
+          - bun
+        default: 'all'
+      repeat:
+        description: 'Number of benchmark iterations'
+        required: false
+        type: number
+        default: 10
+      depth:
+        description: 'Recursion depth for scenarios'
+        required: false
+        type: number
+        default: 100
+
+# Ensure only one benchmark run at a time
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # Build Effection from branch
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.build.outputs.commit_hash }}
+      build_version: ${{ steps.build.outputs.build_version }}
+    steps:
+      - name: Clone Effection
+        run: |
+          git clone --depth 1 --branch ${{ inputs.branch }} https://github.com/thefrontside/effection.git effection-src
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Build npm package
+        id: build
+        working-directory: effection-src
+        run: |
+          # Get commit hash
+          COMMIT_HASH=$(git rev-parse HEAD)
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          
+          # Generate build version from branch name (sanitize for semver prerelease)
+          # Replace / with - and remove any characters not allowed in semver prerelease
+          SANITIZED_BRANCH=$(echo "${{ inputs.branch }}" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9-]||g')
+          BUILD_VERSION="0.0.0-${SANITIZED_BRANCH}"
+          echo "build_version=$BUILD_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "Building Effection from branch ${{ inputs.branch }} @ $COMMIT_HASH"
+          echo "Build version: $BUILD_VERSION"
+          
+          # Build the npm package
+          deno task build:npm "$BUILD_VERSION"
+          
+          # Create tarball
+          cd build/npm
+          npm pack
+          mv *.tgz ../../effection.tgz
+      
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: effection-tarball
+          path: effection-src/effection.tgz
+          retention-days: 1
+
+  # Prepare the benchmark matrix
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      runtimes: ${{ steps.runtimes.outputs.runtimes }}
+    steps:
+      - name: Determine runtimes to benchmark
+        id: runtimes
+        run: |
+          runtime="${{ inputs.runtime }}"
+          if [ "$runtime" = "all" ] || [ -z "$runtime" ]; then
+            echo 'runtimes=["node", "deno", "bun"]' >> $GITHUB_OUTPUT
+          else
+            echo "runtimes=[\"$runtime\"]" >> $GITHUB_OUTPUT
+          fi
+
+  # Run benchmarks for each runtime
+  benchmark:
+    needs: [build, prepare]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: ${{ fromJson(needs.prepare.outputs.runtimes) }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Download the built tarball
+      - name: Download tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: effection-tarball
+          path: .
+      
+      # Install Deno (always needed as the CLI runs on Deno)
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Install Node.js (required for npm install in the workspace)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      # Install Bun for Bun runtime
+      - name: Setup Bun
+        if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      # Reduce variance on Linux runners
+      - name: Configure runner for benchmarks
+        run: |
+          # Stop unnecessary services to reduce noise
+          sudo systemctl stop snapd.service snapd.socket || true
+          sudo systemctl stop unattended-upgrades || true
+          
+          # Show CPU info for debugging
+          lscpu | grep -E "Model name|CPU\(s\)|Thread"
+      
+      # Run benchmarks
+      # --release uses the branch name directly (appears on dashboard charts)
+      - name: Run benchmarks
+        env:
+          REPEAT: ${{ inputs.repeat }}
+          DEPTH: ${{ inputs.depth }}
+        run: |
+          deno run -A cli/main.ts run \
+            --release "${{ inputs.branch }}" \
+            --runtime ${{ matrix.runtime }} \
+            --repeat ${REPEAT:-10} \
+            --depth ${DEPTH:-100} \
+            --warmup 3 \
+            --effection-tarball ./effection.tgz \
+            --source branch \
+            --commit-hash "${{ needs.build.outputs.commit_hash }}"
+      
+      # Upload results as artifact
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-branch-${{ matrix.runtime }}
+          path: data/json/*.json
+          retention-days: 30
+
+  # Aggregate results and commit
+  aggregate:
+    needs: [build, benchmark]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history for proper git operations
+          fetch-depth: 0
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      # Download all benchmark artifacts
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: benchmark-branch-*
+      
+      # Move results to data/json
+      - name: Aggregate results
+        run: |
+          mkdir -p data/json
+          find artifacts -name "*.json" -exec cp {} data/json/ \;
+          echo "Aggregated $(ls data/json/*.json 2>/dev/null | wc -l) result files"
+          ls -la data/json/
+      
+      # Commit and push results
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add data/json/*.json
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            SHORT_HASH=$(echo "${{ needs.build.outputs.commit_hash }}" | cut -c1-7)
+            git commit -m "data: add branch benchmark results for ${{ inputs.branch }} ($SHORT_HASH)"
+            git push
+          fi

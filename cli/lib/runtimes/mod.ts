@@ -8,7 +8,7 @@
  */
 
 import type { Operation } from "effection";
-import type { BenchmarkResult, RuntimeId } from "../schema.ts";
+import type { BenchmarkResult, BenchmarkSource, RuntimeId } from "../schema.ts";
 import type { Workspace } from "../workspace.ts";
 import { nodeAdapter } from "./node.ts";
 import { denoAdapter } from "./deno.ts";
@@ -18,7 +18,12 @@ import { bunAdapter } from "./bun.ts";
  * Options for running a benchmark scenario.
  */
 export interface ScenarioOpts {
-  /** Effection npm version (e.g., "4.0.0") */
+  /**
+   * Version or branch identifier.
+   *
+   * For npm benchmarks: the npm version (e.g., "4.0.2")
+   * For branch benchmarks: the git branch name (e.g., "api-perf-try-object-cache-not-weakmap")
+   */
   releaseTag: string;
   /** Scenario name (e.g., "effection.recursion") */
   scenario: string;
@@ -36,6 +41,10 @@ export interface ScenarioOpts {
   };
   /** Workspace with npm-installed packages */
   workspace: Workspace;
+  /** Source of the Effection package: "npm" (default) or "branch" */
+  source?: BenchmarkSource;
+  /** Git commit hash (only when source is "branch") */
+  commitHash?: string;
 }
 
 /**

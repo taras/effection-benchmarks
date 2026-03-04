@@ -72,6 +72,8 @@ function* generateParquet(): Operation<Uint8Array> {
   // Register semver macro for sorting
   yield* db.runQuery(SEMVER_MACRO);
 
+  // Step 1: Create table WITHOUT optional branch metadata fields
+  // (source, commitHash may not exist in any JSON file yet)
   yield* db.runQuery(`
     CREATE TABLE benchmarks AS
     SELECT
@@ -88,6 +90,31 @@ function* generateParquet(): Operation<Uint8Array> {
       filename AS sourceFile
     FROM read_json_auto('${jsonGlobPath}', filename=true, union_by_name=true)
   `);
+
+  // Step 2: Add optional branch metadata columns with defaults
+  yield* db.runQuery(`ALTER TABLE benchmarks ADD COLUMN source VARCHAR DEFAULT 'npm'`);
+  yield* db.runQuery(`ALTER TABLE benchmarks ADD COLUMN commitHash VARCHAR`);
+
+  // Step 3: Try to update rows from files that have branch metadata
+  // This query will fail if no files have these fields (struct key not found),
+  // which is fine — the defaults from Step 2 are correct for npm-only data
+  try {
+    yield* db.runQuery(`
+      UPDATE benchmarks SET
+        source = branch_data.source,
+        commitHash = branch_data.commitHash
+      FROM (
+        SELECT 
+          filename AS sourceFile,
+          COALESCE(metadata.source, 'npm') AS source,
+          metadata.commitHash AS commitHash
+        FROM read_json_auto('${jsonGlobPath}', filename=true, union_by_name=true)
+      ) AS branch_data
+      WHERE benchmarks.sourceFile = branch_data.sourceFile
+    `);
+  } catch {
+    // No files have branch metadata yet — defaults are fine
+  }
 
   const tempParquetPath = join(projectRoot, ".cache/benchmarks.parquet");
   yield* call(() => Deno.mkdir(join(projectRoot, ".cache"), { recursive: true }));

@@ -35,10 +35,10 @@ The benchmark measures how much overhead each abstraction adds.
 
 View the benchmark implementations on GitHub:
 
-- [effection](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection.events.ts)
-- [rxjs](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/rxjs.events.ts)
-- [effect](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effect.events.ts)
-- [addEventListener](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/add-event-listener.events.ts)
+- [effection](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effection.events.ts)
+- [rxjs](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/rxjs.events.ts)
+- [effect](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect.events.ts)
+- [addEventListener](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/add-event-listener.events.ts)
 
 ---
 

@@ -126,9 +126,29 @@ export const BenchmarkParamsSchema = z.object({
 export type BenchmarkParams = z.infer<typeof BenchmarkParamsSchema>;
 
 /**
+ * Source of the Effection package being benchmarked.
+ * - "npm": Published npm version (default)
+ * - "branch": Local tarball from a git branch
+ */
+export const BenchmarkSourceSchema = z.enum(["npm", "branch"]);
+
+/**
+ * Benchmark source type.
+ */
+export type BenchmarkSource = z.infer<typeof BenchmarkSourceSchema>;
+
+/**
  * Metadata for a benchmark run.
  */
 export const MetadataSchema = z.object({
+  /**
+   * Version or branch identifier for the benchmark.
+   *
+   * For npm benchmarks: the npm version (e.g., "4.0.2", "3.6.0")
+   * For branch benchmarks: the git branch name (e.g., "api-perf-try-object-cache-not-weakmap")
+   *
+   * This field appears on dashboard chart X-axes and is used for grouping results.
+   */
   releaseTag: z.string().min(1),
   runtime: RuntimeIdSchema,
   runtimeMajorVersion: z.number().int().nonnegative(),
@@ -136,6 +156,10 @@ export const MetadataSchema = z.object({
   runner: RunnerSchema,
   scenario: z.string().min(1),
   benchmarkParams: BenchmarkParamsSchema,
+  /** Source of the Effection package: "npm" (default) or "branch" */
+  source: BenchmarkSourceSchema.optional(),
+  /** Git commit hash (only when source is "branch") */
+  commitHash: z.string().optional(),
 });
 
 /**

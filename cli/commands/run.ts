@@ -15,6 +15,7 @@ import {
   RuntimeIdSchema,
   SCENARIOS,
   type BenchmarkResult,
+  type BenchmarkSource,
   type RuntimeId,
   type ScenarioName,
   validateBenchmarkConfig,
@@ -29,7 +30,7 @@ import { useWorkspace, type Workspace } from "../lib/workspace.ts";
 const configliere = new Configliere({
   release: {
     schema: z.string().min(1),
-    description: "Effection npm version to benchmark",
+    description: "Effection version (e.g., '4.0.2') or branch name (e.g., 'api-perf-try-object-cache')",
     cli: { alias: "r" },
   },
   runtime: {
@@ -79,6 +80,19 @@ const configliere = new Configliere({
     default: false,
     description: "Stop on first failure",
     cli: { switch: true },
+  },
+  // Branch benchmarking options
+  "effection-tarball": {
+    schema: z.string().optional(),
+    description: "Path to local Effection tarball (overrides npm install)",
+  },
+  source: {
+    schema: z.enum(["npm", "branch"]).optional(),
+    description: "Source type: 'npm' (default) or 'branch'",
+  },
+  "commit-hash": {
+    schema: z.string().optional(),
+    description: "Git commit hash (for branch benchmarks)",
   },
 });
 
@@ -171,6 +185,8 @@ function* runForRuntime(
     depth: number;
     warmup: number;
     comparisonVersions: { rxjs: string; effect: string; co: string; inline: string };
+    source?: BenchmarkSource;
+    commitHash?: string;
   },
 ): Operation<BenchmarkResult[]> {
   const adapter = getAdapter(runtime);
@@ -215,6 +231,8 @@ function* runForRuntime(
       depth: opts.depth,
       comparisonVersions: opts.comparisonVersions,
       workspace,
+      source: opts.source,
+      commitHash: opts.commitHash,
     });
 
     results.push(result);
@@ -227,12 +245,27 @@ function* runForRuntime(
 }
 
 /**
+ * Sanitize a string for use in filenames.
+ * Replaces `/` with `~` to handle branch names like "cowboyd/my-feature".
+ */
+function sanitizeForFilename(s: string): string {
+  return s.replace(/\//g, "~");
+}
+
+/**
  * Write benchmark result to data/json/.
+ * 
+ * For branch benchmarks, the releaseTag contains the branch name directly.
+ * Branch names are sanitized (/ -> ~) for filesystem compatibility.
  */
 function writeResult(result: BenchmarkResult): void {
   const { metadata } = result;
   const date = metadata.timestamp.split("T")[0];
-  const filename = `${date}-${metadata.releaseTag}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
+  
+  // Sanitize releaseTag for filename (handles branch names with slashes)
+  const sanitizedTag = sanitizeForFilename(metadata.releaseTag);
+  
+  const filename = `${date}-${sanitizedTag}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
   const path = `data/json/${filename}`;
 
   Deno.mkdirSync("data/json", { recursive: true });
@@ -262,6 +295,11 @@ export function* runCommand(args: string[]): Operation<number> {
   const runtimes = config.runtime as RuntimeId[];
   const useCache = config["cache-workspace"] as boolean;
   const failFast = config["fail-fast"] as boolean;
+  
+  // Branch benchmark options
+  const effectionTarball = config["effection-tarball"] as string | undefined;
+  const source = (config.source as BenchmarkSource | undefined) ?? (effectionTarball ? "branch" : "npm");
+  const commitHash = config["commit-hash"] as string | undefined;
 
   // Load comparison library versions
   const defaultVersions = loadConfig();
@@ -273,6 +311,12 @@ export function* runCommand(args: string[]): Operation<number> {
   };
 
   console.log(`\nRunning benchmarks for Effection ${release}`);
+  if (source === "branch") {
+    console.log(`Source: branch @ ${commitHash?.slice(0, 7) || "unknown"}`);
+    if (effectionTarball) {
+      console.log(`Tarball: ${effectionTarball}`);
+    }
+  }
   console.log(`Runtimes: ${runtimes.join(", ")}`);
   console.log(`Scenarios: ${SCENARIOS.length} total`);
   console.log(`Options: repeat=${config.repeat}, depth=${config.depth}, warmup=${config.warmup}`);
@@ -290,6 +334,7 @@ export function* runCommand(args: string[]): Operation<number> {
     effectionVersion: release,
     comparisonVersions,
     useCache,
+    effectionTarball,
   });
   console.log(`Workspace ready at: ${workspace.path}\n`);
 
@@ -305,6 +350,8 @@ export function* runCommand(args: string[]): Operation<number> {
         depth: config.depth,
         warmup: config.warmup,
         comparisonVersions,
+        source,
+        commitHash,
       }),
     );
     results.push(r);

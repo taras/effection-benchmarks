@@ -31,7 +31,7 @@ Commands:
 
 - `bench run`
   - Required:
-    - `--release`, `-r` Effection npm version (e.g. `4.0.2`)
+    - `--release`, `-r` Version or branch identifier (e.g. `4.0.2` or `api-perf-try-object-cache`)
     - `--runtime` Runtime to benchmark (`node`, `deno`, `bun`); repeatable
   - Options:
     - `--repeat` iterations (default `10`)
@@ -40,6 +40,10 @@ Commands:
     - `--rxjs-version`, `--effect-version`, `--co-version` comparison library versions (defaults from `benchmark.config.json`)
     - `--cache-workspace` reuse `npm install` between runs (writes to `~/.cache/effection-bench/`)
     - `--fail-fast` stop after the first runtime failure
+  - Branch benchmarking options:
+    - `--effection-tarball` path to local Effection tarball (overrides npm install)
+    - `--source` source type: `npm` (default) or `branch`
+    - `--commit-hash` git commit hash (for branch benchmarks)
 
 - `bench list-releases`
   - Options:
