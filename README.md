@@ -192,6 +192,59 @@ deno run -A cli/main.ts run --release 4.0.1 --runtime deno --runtime node --cach
 deno run -A cli/main.ts status
 ```
 
+## Branch Benchmarks
+
+You can benchmark Effection branches before they're published to npm. This is useful for testing performance impact of changes during development.
+
+### Via GitHub Actions (Recommended)
+
+Use the "Branch Benchmark" workflow:
+
+1. Go to Actions > Branch Benchmark > Run workflow
+2. Enter the branch name (e.g., `cowboyd/my-feature`)
+3. Enter a release tag for comparison (e.g., `4.1.0-branch.1`)
+4. Select runtime(s) and click "Run workflow"
+
+The workflow will:
+- Clone the Effection repo at the specified branch
+- Build the npm package using `deno task build:npm`
+- Run benchmarks using the built tarball
+- Commit results to `data/json/` with branch metadata
+
+### Via CLI (Local)
+
+First, build Effection locally:
+
+```bash
+# In the Effection repo
+git checkout my-feature
+deno task build:npm 4.1.0-branch.1
+cd build/npm && npm pack
+```
+
+Then run benchmarks with the tarball:
+
+```bash
+deno run -A cli/main.ts run \
+  --release 4.1.0-branch.1 \
+  --runtime deno \
+  --effection-tarball /path/to/effection-4.1.0-branch.1.tgz \
+  --source branch \
+  --branch-name my-feature \
+  --commit-hash abc1234
+```
+
+### Branch Benchmark Data
+
+Branch benchmarks include additional metadata:
+- `source`: "branch" (vs "npm" for published releases)
+- `branchName`: Git branch name
+- `commitHash`: Full commit hash
+
+Filenames use the pattern: `YYYY-MM-DD-branch-<sanitized-branch>-<short-hash>-<runtime>-<version>-<scenario>.json`
+
+Branch names with `/` are sanitized (replaced with `~`) for filesystem compatibility.
+
 ## Project Structure
 
 ```

@@ -40,6 +40,11 @@ Commands:
     - `--rxjs-version`, `--effect-version`, `--co-version` comparison library versions (defaults from `benchmark.config.json`)
     - `--cache-workspace` reuse `npm install` between runs (writes to `~/.cache/effection-bench/`)
     - `--fail-fast` stop after the first runtime failure
+  - Branch benchmarking options:
+    - `--effection-tarball` path to local Effection tarball (overrides npm install)
+    - `--source` source type: `npm` (default) or `branch`
+    - `--branch-name` git branch name (for branch benchmarks)
+    - `--commit-hash` git commit hash (for branch benchmarks)
 
 - `bench list-releases`
   - Options:

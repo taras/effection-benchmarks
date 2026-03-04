@@ -45,10 +45,21 @@ Options:
   --cache-workspace Cache npm install between runs (default: false)
   --fail-fast       Stop on first runtime failure (default: false)
 
+Branch Benchmarking:
+  --effection-tarball  Path to local Effection tarball (overrides npm install)
+  --source             Source type: 'npm' (default) or 'branch'
+  --branch-name        Git branch name (for branch benchmarks)
+  --commit-hash        Git commit hash (for branch benchmarks)
+
 Examples:
   bench run --release 4.0.0 --runtime node
   bench run -r 4.0.2 --runtime node --runtime deno
   bench run --release 4.0.0 --runtime node --repeat 20 --depth 50
+  
+  # Branch benchmark (local tarball)
+  bench run --release 4.1.0-dev --runtime deno \\
+    --effection-tarball ./effection.tgz \\
+    --source branch --branch-name my-feature --commit-hash abc1234
 `.trim();
 
 const LIST_RELEASES_HELP = `
