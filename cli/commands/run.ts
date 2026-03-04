@@ -30,7 +30,7 @@ import { useWorkspace, type Workspace } from "../lib/workspace.ts";
 const configliere = new Configliere({
   release: {
     schema: z.string().min(1),
-    description: "Effection npm version to benchmark",
+    description: "Effection version (e.g., '4.0.2') or branch name (e.g., 'api-perf-try-object-cache')",
     cli: { alias: "r" },
   },
   runtime: {
@@ -89,10 +89,6 @@ const configliere = new Configliere({
   source: {
     schema: z.enum(["npm", "branch"]).optional(),
     description: "Source type: 'npm' (default) or 'branch'",
-  },
-  "branch-name": {
-    schema: z.string().optional(),
-    description: "Git branch name (for branch benchmarks)",
   },
   "commit-hash": {
     schema: z.string().optional(),
@@ -190,7 +186,6 @@ function* runForRuntime(
     warmup: number;
     comparisonVersions: { rxjs: string; effect: string; co: string; inline: string };
     source?: BenchmarkSource;
-    branchName?: string;
     commitHash?: string;
   },
 ): Operation<BenchmarkResult[]> {
@@ -237,7 +232,6 @@ function* runForRuntime(
       comparisonVersions: opts.comparisonVersions,
       workspace,
       source: opts.source,
-      branchName: opts.branchName,
       commitHash: opts.commitHash,
     });
 
@@ -261,23 +255,17 @@ function sanitizeForFilename(s: string): string {
 /**
  * Write benchmark result to data/json/.
  * 
- * For branch benchmarks, includes branch name and commit hash in filename.
+ * For branch benchmarks, the releaseTag contains the branch name directly.
  * Branch names are sanitized (/ -> ~) for filesystem compatibility.
  */
 function writeResult(result: BenchmarkResult): void {
   const { metadata } = result;
   const date = metadata.timestamp.split("T")[0];
   
-  // Build filename parts
-  let releaseOrBranch = metadata.releaseTag;
-  if (metadata.source === "branch" && metadata.branchName) {
-    // Use sanitized branch name and short commit hash for branch benchmarks
-    const sanitizedBranch = sanitizeForFilename(metadata.branchName);
-    const shortHash = metadata.commitHash?.slice(0, 7) || "unknown";
-    releaseOrBranch = `branch-${sanitizedBranch}-${shortHash}`;
-  }
+  // Sanitize releaseTag for filename (handles branch names with slashes)
+  const sanitizedTag = sanitizeForFilename(metadata.releaseTag);
   
-  const filename = `${date}-${releaseOrBranch}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
+  const filename = `${date}-${sanitizedTag}-${metadata.runtime}-${metadata.runtimeMajorVersion}-${metadata.scenario}.json`;
   const path = `data/json/${filename}`;
 
   Deno.mkdirSync("data/json", { recursive: true });
@@ -311,7 +299,6 @@ export function* runCommand(args: string[]): Operation<number> {
   // Branch benchmark options
   const effectionTarball = config["effection-tarball"] as string | undefined;
   const source = (config.source as BenchmarkSource | undefined) ?? (effectionTarball ? "branch" : "npm");
-  const branchName = config["branch-name"] as string | undefined;
   const commitHash = config["commit-hash"] as string | undefined;
 
   // Load comparison library versions
@@ -325,7 +312,7 @@ export function* runCommand(args: string[]): Operation<number> {
 
   console.log(`\nRunning benchmarks for Effection ${release}`);
   if (source === "branch") {
-    console.log(`Source: branch (${branchName || "unknown"} @ ${commitHash?.slice(0, 7) || "unknown"})`);
+    console.log(`Source: branch @ ${commitHash?.slice(0, 7) || "unknown"}`);
     if (effectionTarball) {
       console.log(`Tarball: ${effectionTarball}`);
     }
@@ -364,7 +351,6 @@ export function* runCommand(args: string[]): Operation<number> {
         warmup: config.warmup,
         comparisonVersions,
         source,
-        branchName,
         commitHash,
       }),
     );

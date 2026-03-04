@@ -201,15 +201,15 @@ You can benchmark Effection branches before they're published to npm. This is us
 Use the "Branch Benchmark" workflow:
 
 1. Go to Actions > Branch Benchmark > Run workflow
-2. Enter the branch name (e.g., `cowboyd/my-feature`)
-3. Enter a release tag for comparison (e.g., `4.1.0-branch.1`)
-4. Select runtime(s) and click "Run workflow"
+2. Enter the branch name (e.g., `api-perf-try-object-cache-not-weakmap`)
+3. Select runtime(s) and click "Run workflow"
 
 The workflow will:
 - Clone the Effection repo at the specified branch
-- Build the npm package using `deno task build:npm`
+- Build the npm package using `deno task build:npm` (auto-generates version `0.0.0-<branch>`)
 - Run benchmarks using the built tarball
 - Commit results to `data/json/` with branch metadata
+- The branch name appears directly on dashboard charts as the `releaseTag`
 
 ### Via CLI (Local)
 
@@ -217,8 +217,8 @@ First, build Effection locally:
 
 ```bash
 # In the Effection repo
-git checkout my-feature
-deno task build:npm 4.1.0-branch.1
+git checkout api-perf-try-object-cache
+deno task build:npm 0.0.0-local
 cd build/npm && npm pack
 ```
 
@@ -226,22 +226,21 @@ Then run benchmarks with the tarball:
 
 ```bash
 deno run -A cli/main.ts run \
-  --release 4.1.0-branch.1 \
+  --release api-perf-try-object-cache \
   --runtime deno \
-  --effection-tarball /path/to/effection-4.1.0-branch.1.tgz \
+  --effection-tarball /path/to/effection-0.0.0-local.tgz \
   --source branch \
-  --branch-name my-feature \
-  --commit-hash abc1234
+  --commit-hash abc1234def5678
 ```
 
 ### Branch Benchmark Data
 
 Branch benchmarks include additional metadata:
+- `releaseTag`: The branch name (e.g., `api-perf-try-object-cache`) — appears on dashboard chart X-axes
 - `source`: "branch" (vs "npm" for published releases)
-- `branchName`: Git branch name
 - `commitHash`: Full commit hash
 
-Filenames use the pattern: `YYYY-MM-DD-branch-<sanitized-branch>-<short-hash>-<runtime>-<version>-<scenario>.json`
+Filenames use the pattern: `YYYY-MM-DD-<sanitized-branch>-<runtime>-<version>-<scenario>.json`
 
 Branch names with `/` are sanitized (replaced with `~`) for filesystem compatibility.
 

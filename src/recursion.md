@@ -8,12 +8,12 @@ Compare structured concurrency overhead for deeply nested async operations acros
 
 View the benchmark implementations on GitHub:
 
-- [effection](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection.recursion.ts)
-- [effection-inline](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effection-inline.recursion.ts)
-- [rxjs](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/rxjs.recursion.ts)
-- [effect](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/effect.recursion.ts)
-- [co](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/co.recursion.ts)
-- [async-await](https://github.com/taras/Effection-performance-dashboard-poc/blob/main/cli/scenarios/async-await.recursion.ts)
+- [effection](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effection.recursion.ts)
+- [effection-inline](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effection-inline.recursion.ts)
+- [rxjs](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/rxjs.recursion.ts)
+- [effect](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect.recursion.ts)
+- [co](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/co.recursion.ts)
+- [async-await](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/async-await.recursion.ts)
 
 ---
 

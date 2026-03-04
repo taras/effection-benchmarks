@@ -18,7 +18,12 @@ import { bunAdapter } from "./bun.ts";
  * Options for running a benchmark scenario.
  */
 export interface ScenarioOpts {
-  /** Effection npm version (e.g., "4.0.0") */
+  /**
+   * Version or branch identifier.
+   *
+   * For npm benchmarks: the npm version (e.g., "4.0.2")
+   * For branch benchmarks: the git branch name (e.g., "api-perf-try-object-cache-not-weakmap")
+   */
   releaseTag: string;
   /** Scenario name (e.g., "effection.recursion") */
   scenario: string;
@@ -38,8 +43,6 @@ export interface ScenarioOpts {
   workspace: Workspace;
   /** Source of the Effection package: "npm" (default) or "branch" */
   source?: BenchmarkSource;
-  /** Git branch name (only when source is "branch") */
-  branchName?: string;
   /** Git commit hash (only when source is "branch") */
   commitHash?: string;
 }

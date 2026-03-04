@@ -4,11 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Effection branch to benchmark (e.g., cowboyd/my-feature)'
-        required: true
-        type: string
-      release_tag:
-        description: 'Release tag for comparison (e.g., 4.0.0-branch.1)'
+        description: 'Effection branch to benchmark (e.g., api-perf-try-object-cache-not-weakmap)'
         required: true
         type: string
       runtime:
@@ -46,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commit_hash: ${{ steps.build.outputs.commit_hash }}
+      build_version: ${{ steps.build.outputs.build_version }}
     steps:
       - name: Clone Effection
         run: |
@@ -63,10 +60,18 @@ jobs:
           # Get commit hash
           COMMIT_HASH=$(git rev-parse HEAD)
           echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          
+          # Generate build version from branch name (sanitize for semver prerelease)
+          # Replace / with - and remove any characters not allowed in semver prerelease
+          SANITIZED_BRANCH=$(echo "${{ inputs.branch }}" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9-]||g')
+          BUILD_VERSION="0.0.0-${SANITIZED_BRANCH}"
+          echo "build_version=$BUILD_VERSION" >> $GITHUB_OUTPUT
+          
           echo "Building Effection from branch ${{ inputs.branch }} @ $COMMIT_HASH"
+          echo "Build version: $BUILD_VERSION"
           
           # Build the npm package
-          deno task build:npm ${{ inputs.release_tag }}
+          deno task build:npm "$BUILD_VERSION"
           
           # Create tarball
           cd build/npm
@@ -145,20 +150,20 @@ jobs:
           lscpu | grep -E "Model name|CPU\(s\)|Thread"
       
       # Run benchmarks
+      # --release uses the branch name directly (appears on dashboard charts)
       - name: Run benchmarks
         env:
           REPEAT: ${{ inputs.repeat }}
           DEPTH: ${{ inputs.depth }}
         run: |
           deno run -A cli/main.ts run \
-            --release ${{ inputs.release_tag }} \
+            --release "${{ inputs.branch }}" \
             --runtime ${{ matrix.runtime }} \
             --repeat ${REPEAT:-10} \
             --depth ${DEPTH:-100} \
             --warmup 3 \
             --effection-tarball ./effection.tgz \
             --source branch \
-            --branch-name "${{ inputs.branch }}" \
             --commit-hash "${{ needs.build.outputs.commit_hash }}"
       
       # Upload results as artifact
@@ -212,11 +217,10 @@ jobs:
           else
             SHORT_HASH=$(echo "${{ needs.build.outputs.commit_hash }}" | cut -c1-7)
             git commit -m "data: add branch benchmark results
-            
-            Branch: ${{ inputs.branch }}
-            Commit: ${{ needs.build.outputs.commit_hash }}
-            Release tag: ${{ inputs.release_tag }}
-            Triggered by: workflow_dispatch"
+
+Branch: ${{ inputs.branch }}
+Commit: ${{ needs.build.outputs.commit_hash }}
+Triggered by: workflow_dispatch"
             
             git push
           fi
