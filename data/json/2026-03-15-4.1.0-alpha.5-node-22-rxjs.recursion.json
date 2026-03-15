@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.5",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-15T00:20:44.087Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "rxjs.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "rxjs",
+      "samples": [
+        0.6613109999999551,
+        0.655571000000009,
+        0.6930389999999989,
+        0.9965550000000007,
+        1.030979000000002,
+        1.0935660000000098,
+        0.5315100000000257,
+        0.9210949999999798,
+        7.104444000000001,
+        0.9288689999999633
+      ]
+    }
+  ]
+}

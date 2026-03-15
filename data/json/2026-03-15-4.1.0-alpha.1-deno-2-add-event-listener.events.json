@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.1",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-03-15T00:20:59.086Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "samples": [
+        7.61157,
+        4.569402999999966,
+        3.9140820000000076,
+        3.8133939999999598,
+        4.19778500000001,
+        3.8462450000000104,
+        7.352242999999987,
+        5.393369000000007,
+        7.460476000000028,
+        3.678672000000006
+      ]
+    }
+  ]
+}

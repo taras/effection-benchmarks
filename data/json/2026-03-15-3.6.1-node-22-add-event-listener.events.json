@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "3.6.1",
+    "runtime": "node",
+    "runtimeMajorVersion": 22,
+    "timestamp": "2026-03-15T00:20:43.525Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "samples": [
+        3.0435380000000123,
+        3.0612820000000056,
+        3.50018399999999,
+        1.580569999999966,
+        2.9436609999999632,
+        4.16913599999998,
+        2.8006030000000237,
+        2.5798599999999965,
+        1.293422000000021,
+        1.5060999999999467
+      ]
+    }
+  ]
+}

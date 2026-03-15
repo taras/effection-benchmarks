@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.0",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-03-15T00:20:35.335Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "rxjs.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "rxjs",
+      "samples": [
+        1.147974000000005,
+        0.7919700000000205,
+        0.8040929999999946,
+        0.7263969999999915,
+        0.5441870000000222,
+        0.5836199999999963,
+        0.4200349999999844,
+        0.4028419999999926,
+        1.4058660000000032,
+        0.2408399999999915
+      ]
+    }
+  ]
+}
