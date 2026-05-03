@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.7",
+    "runtime": "bun",
+    "runtimeMajorVersion": 1,
+    "timestamp": "2026-05-03T00:30:33.649Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "add-event-listener.events",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "addEventListener",
+      "samples": [
+        4.675037000000003,
+        4.850921,
+        4.658100999999988,
+        4.64854600000001,
+        4.579121999999984,
+        4.793655000000001,
+        4.6509099999999535,
+        4.571640000000002,
+        4.4792810000000145,
+        4.46012300000001
+      ]
+    }
+  ]
+}
