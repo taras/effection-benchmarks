@@ -352,6 +352,77 @@ display(Plot.plot({
 
 ---
 
+## Memory Footprint
+
+Median retained-memory change per iteration. RSS is process-wide; heap is the JS engine's used heap. Deltas can be negative when the GC runs between snapshots — the median is more robust to that noise than the average. Older releases without memory data are filtered out automatically.
+
+\`\`\`js
+const memoryData = (await query(\`
+  SELECT
+    benchmarkName,
+    pctl(list_transform(memorySamples, s -> s.rssDelta), 50) AS rssDeltaP50,
+    pctl(list_transform(memorySamples, s -> s.heapUsedDelta), 50) AS heapDeltaP50
+  FROM benchmarks
+  WHERE scenario IN (${scenarioNames})
+    AND runtime = '\${runtime}'
+    AND releaseTag = '\${releaseTag}'
+    AND memorySamples IS NOT NULL
+  ORDER BY heapDeltaP50 ASC
+\`)).map(d => ({
+  ...d,
+  rssDeltaKB: d.rssDeltaP50 / 1024,
+  heapDeltaKB: d.heapDeltaP50 / 1024,
+}));
+\`\`\`
+
+\`\`\`js
+display(memoryData.length === 0
+  ? html\`<div class="warning">No memory data for release <strong>\${releaseTag}</strong> on <strong>\${runtime}</strong>. Pick a more recent release to see memory bars.</div>\`
+  : Plot.plot({
+      title: \`Median Heap Δ per Iteration (\${runtime})\`,
+      width,
+      height: 360,
+      x: {label: "Library"},
+      y: {label: "Heap delta (KB)", grid: true},
+      color: {legend: true, scheme: "tableau10"},
+      marks: [
+        Plot.barY(memoryData, {
+          x: "benchmarkName",
+          y: "heapDeltaKB",
+          fill: "benchmarkName",
+          sort: {x: "y"},
+          tip: true,
+        }),
+        Plot.ruleY([0]),
+      ],
+    }))
+\`\`\`
+
+\`\`\`js
+display(memoryData.length === 0
+  ? null
+  : Plot.plot({
+      title: \`Median RSS Δ per Iteration (\${runtime})\`,
+      width,
+      height: 360,
+      x: {label: "Library"},
+      y: {label: "RSS delta (KB)", grid: true},
+      color: {legend: true, scheme: "tableau10"},
+      marks: [
+        Plot.barY(memoryData, {
+          x: "benchmarkName",
+          y: "rssDeltaKB",
+          fill: "benchmarkName",
+          sort: {x: "y"},
+          tip: true,
+        }),
+        Plot.ruleY([0]),
+      ],
+    }))
+\`\`\`
+
+---
+
 ## Performance Over Releases
 
 How each library's performance has changed across Effection releases.
