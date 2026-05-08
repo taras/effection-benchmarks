@@ -329,7 +329,7 @@ function peakHeapPlot(rows, label) {
 
 ```js
 display(peakHeapRelative.length === 0
-  ? html`<div class="warning">No peak-heap data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. `heapUsedPeak` was added in schema v5 — pick a release that's been benchmarked since then.</div>`
+  ? html`<div class="warning">No peak-heap data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. <code>heapUsedPeak</code> was added in schema v5 — pick a release that's been benchmarked since then.</div>`
   : html`<div>${peakHeapPlot(peakHeapRecursion, "Recursion")}${peakHeapPlot(peakHeapEvents, "Events")}</div>`)
 ```
 
