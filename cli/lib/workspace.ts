@@ -24,6 +24,7 @@ export interface WorkspaceConfig {
   comparisonVersions: {
     rxjs: string;
     effect: string;
+    "effect-v4": string;
     co: string;
     inline: string;
   };
@@ -58,6 +59,8 @@ function generatePackageJson(config: WorkspaceConfig, useTarball: boolean): stri
       "@effectionx/inline": config.comparisonVersions.inline,
       rxjs: config.comparisonVersions.rxjs,
       effect: config.comparisonVersions.effect,
+      // npm alias: lets us pin a second major of effect side-by-side with v3.
+      "effect-v4": `npm:effect@${config.comparisonVersions["effect-v4"]}`,
       co: config.comparisonVersions.co,
     },
   };
@@ -99,6 +102,7 @@ async function computeCacheKey(config: WorkspaceConfig): Promise<string> {
     inline: config.comparisonVersions.inline,
     rxjs: config.comparisonVersions.rxjs,
     effect: config.comparisonVersions.effect,
+    "effect-v4": config.comparisonVersions["effect-v4"],
     co: config.comparisonVersions.co,
   });
   const encoder = new TextEncoder();

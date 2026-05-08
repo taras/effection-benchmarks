@@ -45,6 +45,8 @@ export const SCENARIOS = [
   "rxjs.events",
   "effect.recursion",
   "effect.events",
+  "effect-v4.recursion",
+  "effect-v4.events",
   "co.recursion",
   "async-await.recursion",
   "add-event-listener.events",
@@ -217,6 +219,7 @@ export const BenchmarkConfigSchema = z.object({
   comparisonLibraries: z.object({
     rxjs: z.string().min(1),
     effect: z.string().min(1),
+    "effect-v4": z.string().min(1),
     co: z.string().min(1),
     inline: z.string().min(1),
   }),

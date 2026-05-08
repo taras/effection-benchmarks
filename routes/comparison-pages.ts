@@ -47,13 +47,14 @@ const COMPARISON_PAGES: ComparisonPage[] = [
     title: "Recursion Benchmarks",
     description:
       "Compare structured concurrency overhead for deeply nested async operations across libraries.",
-    libraries: ["effection", "effection-inline", "rxjs", "effect", "co", "async-await"],
+    libraries: ["effection", "effection-inline", "rxjs", "effect", "effect-v4", "co", "async-await"],
     scenarioType: "recursion",
     sourceFiles: {
       effection: "effection.recursion.ts",
       "effection-inline": "effection-inline.recursion.ts",
       rxjs: "rxjs.recursion.ts",
       effect: "effect.recursion.ts",
+      "effect-v4": "effect-v4.recursion.ts",
       co: "co.recursion.ts",
       "async-await": "async-await.recursion.ts",
     },
@@ -82,7 +83,8 @@ Each scenario:
 | **addEventListener** | \`EventTarget\` | Native \`addEventListener\` | \`removeEventListener\` on abort |
 | **effection** | \`EventTarget\` | \`on()\` + \`each()\` | Structured concurrency (halt) |
 | **rxjs** | \`EventTarget\` | \`fromEvent()\` | \`unsubscribe()\` via \`takeUntil\` |
-| **effect** | \`EventTarget\` | \`Stream.fromEventListener()\` | Fiber interruption |
+| **effect** | \`EventTarget\` | \`Stream.fromEventListener()\` | Fiber interruption (v3) |
+| **effect-v4** | \`EventTarget\` | \`Stream.fromEventListener()\` | Fiber interruption (v4 beta) |
 
 The **addEventListener** baseline shows the raw cost of native event handling with manual cleanup. The reactive libraries add abstraction for:
 - **Automatic cleanup** — listeners removed when cancelled
@@ -91,12 +93,13 @@ The **addEventListener** baseline shows the raw cost of native event handling wi
 
 The benchmark measures how much overhead each abstraction adds.
 `,
-    libraries: ["effection", "rxjs", "effect", "addEventListener"],
+    libraries: ["effection", "rxjs", "effect", "effect-v4", "addEventListener"],
     scenarioType: "events",
     sourceFiles: {
       effection: "effection.events.ts",
       rxjs: "rxjs.events.ts",
       effect: "effect.events.ts",
+      "effect-v4": "effect-v4.events.ts",
       addEventListener: "add-event-listener.events.ts",
     },
     unit: "ms",
