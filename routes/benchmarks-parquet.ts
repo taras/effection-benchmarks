@@ -25,13 +25,15 @@ function* useDuckDB(): Operation<{
 
     // Tune for constrained-memory environments (e.g. Deno Deploy). memory_limit
     // governs only the buffer manager; some allocations happen outside it.
-    yield* call(() => connection.run(`SET threads = 1`));
-    yield* call(() => connection.run(`SET memory_limit = '256MB'`));
-    yield* call(() => connection.run(`SET preserve_insertion_order = false`));
     yield* call(() =>
-      connection.run(`SET temp_directory = '${tempDir}'`),
+      connection.run(`
+        SET threads = 1;
+        SET memory_limit = '256MB';
+        SET preserve_insertion_order = false;
+        SET temp_directory = '${tempDir}';
+        SET max_temp_directory_size = '1GB';
+      `),
     );
-    yield* call(() => connection.run(`SET max_temp_directory_size = '1GB'`));
 
     try {
       yield* provide({
