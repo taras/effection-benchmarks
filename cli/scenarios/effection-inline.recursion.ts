@@ -20,7 +20,7 @@ iterator stack, collapsing O(depth) frame unwinding to O(1). This shows
 the potential performance gain from opting into the optimization on hot paths.
 `.trim();
 
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
  * Recursive operation using inline() instead of yield*.
@@ -28,10 +28,13 @@ import type { Scenario } from "../harness/types.ts";
  * Note: inline() returns unknown, requiring a cast. This is the trade-off
  * for eliminating generator frame overhead.
  */
-function* recurse(depth: number): Operation<void> {
+function* recurse(depth: number, ctx: ScenarioCtx): Operation<void> {
   if (depth > 1) {
-    (yield inline(recurse(depth - 1))) as void;
+    (yield inline(recurse(depth - 1, ctx))) as void;
   } else {
+    // Peak: inline() collapses generator frames, but the iterator stack still
+    // holds `depth` entries here before the inner loop runs.
+    ctx.markPeak();
     for (let i = 0; i < 100; i++) {
       yield* call(() => Promise.resolve());
     }

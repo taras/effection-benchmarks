@@ -19,25 +19,26 @@ serving as a historical baseline for generator-based async patterns that
 predated async/await.
 `.trim();
 import co from "co";
-import type { Scenario } from "../harness/types.ts";
-
-/**
- * Recursive generator function for co.
- */
-function* recurse(depth: number): Generator<unknown, void> {
-  if (depth > 1) {
-    yield recurse(depth - 1);
-  } else {
-    for (let i = 0; i < 100; i++) {
-      yield Promise.resolve();
-    }
-  }
-}
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
  * Wrapper that runs co generator as an Effection operation.
+ *
+ * The recursive generator captures `ctx` via closure so the peak mark
+ * lands inside the leaf without changing the co-friendly call shape.
  */
-function* run(depth: number): Operation<void> {
+function* run(depth: number, ctx: ScenarioCtx): Operation<void> {
+  function* recurse(d: number): Generator<unknown, void> {
+    if (d > 1) {
+      yield recurse(d - 1);
+    } else {
+      // Peak: all `depth` generator frames are suspended here.
+      ctx.markPeak();
+      for (let i = 0; i < 100; i++) {
+        yield Promise.resolve();
+      }
+    }
+  }
   yield* call(() => co(recurse, depth));
 }
 

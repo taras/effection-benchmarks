@@ -18,15 +18,17 @@ calls. Creates a recursive chain of operations that bottoms out with 100
 Promise.resolve() calls, testing how efficiently Effection manages operation
 lifecycles and context propagation through the call stack.
 `.trim();
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
  * Recursive operation that bottoms out with Promise.resolve() calls.
  */
-function* recurse(depth: number): Operation<void> {
+function* recurse(depth: number, ctx: ScenarioCtx): Operation<void> {
   if (depth > 1) {
-    yield* recurse(depth - 1);
+    yield* recurse(depth - 1, ctx);
   } else {
+    // Peak: all `depth` Operation frames are suspended on the task tree.
+    ctx.markPeak();
     for (let i = 0; i < 100; i++) {
       yield* call(() => Promise.resolve());
     }

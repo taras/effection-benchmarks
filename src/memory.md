@@ -9,14 +9,14 @@ For each iteration of every scenario, the harness:
 1. Snapshots heap and RSS via `Deno.memoryUsage()` / `process.memoryUsage()` **before** the scoped scenario run.
 2. Runs the scenario, then snapshots again — that gives `heapUsedDelta` and `rssDelta`.
 3. **Forces a major GC** (`globalThis.gc()` via `--expose-gc` on Node/Deno; `Bun.gc(true)` on Bun) and snapshots heap a third time as `heapUsedAfterGc`.
+4. **Peak memory** during the iteration is collected by the scenario itself: each scenario calls `ctx.markPeak()` at its structural high-water moment (the leaf of recursion, the moment after all events have been dispatched but before teardown). The harness combines those marks with the before/after snapshots and stores the max as `heapUsedPeak` / `rssPeak`. Because the marks are placed deterministically, peak capture works equally well for sub-millisecond recursion and longer-running events scenarios — no sampling timer to fight the event loop.
 
-The forced-GC snapshot is taken outside the timed window, so it doesn't contaminate latency. Each iteration produces six numeric fields plus the post-GC reading.
+The forced-GC snapshot and peak snapshots are taken outside the timed window, so they don't contaminate latency.
 
-## The metric that matters: post-GC retained heap
+## Two heap metrics, two questions
 
-The `heapUsedAfter - heapUsedBefore` delta is contaminated by whether a natural major GC happened to fire mid-iteration, which makes the median oscillate between large positive and large negative values for no library reason — we've seen `+22 MB` p50 next to `-28 MB` p50 on otherwise comparable scenarios.
-
-`heapUsedAfterGc` is taken right after a forced major collection, so it represents what the library actually couldn't reclaim. **That's the steady-state memory cost of running the scenario** and the cleanest comparison we have.
+- **Post-GC retained heap (`heapUsedAfterGc`)** answers "what does the library hold onto when idle?" The forced-GC snapshot strips out unreachable garbage so it only counts live state. `heapUsedAfter - heapUsedBefore` (without forced GC) was contaminated by whether a natural major GC happened to fire mid-iteration — we've seen `+22 MB` p50 next to `-28 MB` p50 on otherwise comparable scenarios — so we don't use the un-GC'd delta for comparison.
+- **Peak heap during iteration (`heapUsedPeak`)** answers "what's the working-set high-water mark while the scenario is running?" Since scenarios mark their own peak via `ctx.markPeak()`, this captures the moment when listeners + in-flight events + temporary allocations are all alive — *before* teardown frees most of them. The gap between peak and post-GC retained tells you how much of a library's footprint is transient vs. durable.
 
 ## RSS varies wildly across runtimes
 
@@ -231,6 +231,86 @@ display(retainedRelative.length === 0
 ```
 
 > The bar height shows each library's heap above the most efficient one in the same scenario type — the lightest library sits at 0 by definition. The number above each bar is its absolute median post-GC heap in MB, so you can read the baseline value without hunting through the data.
+
+## Median Peak Heap During Iteration (relative)
+
+Median high-water-mark of heap usage **during** each iteration, again shown above the lightest library in the same scenario type. Schema v5 added a `ScenarioCtx.markPeak()` hook that scenarios call at their structural peak (the leaf of recursion, the moment after all events are dispatched but before teardown). Peaks are deterministic snapshots, not sampled — the harness combines explicit marks with the before/after snapshots and keeps the max.
+
+This answers a different question than the post-GC chart above: **what's the working-set high-water mark while the scenario is running**, vs. what's left over after a major GC. Events scenarios should show much higher peaks than retained heap because their listener chain is alive during dispatch and freed at teardown; short recursion scenarios should look similar to their retained heap because there's barely any time between peak and end.
+
+```js
+const peakHeapData = (await query(`
+  SELECT
+    benchmarkName,
+    CASE
+      WHEN scenario LIKE '%.recursion' THEN 'recursion'
+      WHEN scenario LIKE '%.events' THEN 'events'
+    END AS scenarioType,
+    pctl(list_transform(memorySamples, s -> s.heapUsedPeak), 50) AS heapPeakP50
+  FROM benchmarks
+  WHERE runtime = '${runtime}'
+    AND releaseTag = '${releaseTag}'
+    AND memorySamples IS NOT NULL
+    AND len(list_filter(memorySamples, s -> s.heapUsedPeak IS NOT NULL)) > 0
+  ORDER BY scenarioType, heapPeakP50 ASC
+`));
+
+const peakMinByScenario = {};
+for (const d of peakHeapData) {
+  const cur = peakMinByScenario[d.scenarioType];
+  if (cur === undefined || d.heapPeakP50 < cur) peakMinByScenario[d.scenarioType] = d.heapPeakP50;
+}
+const peakHeapRelative = peakHeapData.map(d => ({
+  ...d,
+  heapPeakAboveMinKB: (d.heapPeakP50 - peakMinByScenario[d.scenarioType]) / 1024,
+  heapPeakAbsoluteMB: d.heapPeakP50 / 1024 / 1024,
+}));
+
+const peakHeapRecursion = peakHeapRelative.filter(d => d.scenarioType === "recursion");
+const peakHeapEvents = peakHeapRelative.filter(d => d.scenarioType === "events");
+
+function peakHeapPlot(rows, label) {
+  if (rows.length === 0) return null;
+  return Plot.plot({
+    title: `${label} — Peak Heap above min (${runtime} / ${releaseTag})`,
+    width,
+    height: 320,
+    marginTop: 30,
+    x: {label: "Library"},
+    y: {label: "Peak heap above scenario min (KB)", grid: true},
+    color: {legend: true, scheme: "tableau10"},
+    marks: [
+      Plot.barY(rows, {
+        x: "benchmarkName",
+        y: "heapPeakAboveMinKB",
+        fill: "benchmarkName",
+        sort: {x: "y"},
+        tip: true,
+        channels: {
+          "absolute (MB)": d => d.heapPeakAbsoluteMB.toFixed(2),
+        },
+      }),
+      Plot.text(rows, {
+        x: "benchmarkName",
+        y: "heapPeakAboveMinKB",
+        text: d => `${d.heapPeakAbsoluteMB.toFixed(2)} MB`,
+        textAnchor: "middle",
+        dy: -8,
+        fontSize: 10,
+      }),
+      Plot.ruleY([0]),
+    ],
+  });
+}
+```
+
+```js
+display(peakHeapRelative.length === 0
+  ? html`<div class="warning">No peak-heap data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. `heapUsedPeak` was added in schema v5 — pick a release that's been benchmarked since then.</div>`
+  : html`<div>${peakHeapPlot(peakHeapRecursion, "Recursion")}${peakHeapPlot(peakHeapEvents, "Events")}</div>`)
+```
+
+> Peak ≥ post-GC retained for any given scenario. The gap between them is the per-iteration "working" allocation — temporary objects allocated during the scenario and reclaimed by the time the forced GC runs.
 
 ## Average RSS Δ per Iteration
 

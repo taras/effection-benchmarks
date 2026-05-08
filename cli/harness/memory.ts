@@ -61,3 +61,32 @@ export function forceGc(): boolean {
   }
   return false;
 }
+
+/**
+ * Per-iteration peak-memory recorder. Each `mark()` snapshots memory and
+ * keeps the running max for both heap and RSS. Backed by `snapshotMemory()`.
+ *
+ * The harness creates one of these per measured iteration and exposes it to
+ * the scenario via `ScenarioCtx.markPeak()`.
+ */
+export interface PeakRecorder {
+  /** Snapshot memory now and update running peaks. */
+  mark(): void;
+  /** Current peak heap and RSS in bytes. */
+  current(): { heapUsed: number; rss: number };
+}
+
+export function createPeakRecorder(): PeakRecorder {
+  let peakHeap = 0;
+  let peakRss = 0;
+  return {
+    mark(): void {
+      const m = snapshotMemory();
+      if (m.heapUsed > peakHeap) peakHeap = m.heapUsed;
+      if (m.rss > peakRss) peakRss = m.rss;
+    },
+    current(): { heapUsed: number; rss: number } {
+      return { heapUsed: peakHeap, rss: peakRss };
+    },
+  };
+}

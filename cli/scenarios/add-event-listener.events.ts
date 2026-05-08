@@ -20,12 +20,12 @@ of EventTarget listeners with manual cleanup via AbortController. This
 represents the minimal overhead for event handling without any abstraction
 layer, providing a reference point for comparing reactive libraries.
 `.trim();
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
  * Run the native addEventListener events benchmark.
  */
-async function runAsync(depth: number): Promise<void> {
+async function runAsync(depth: number, ctx: ScenarioCtx): Promise<void> {
   const target = new EventTarget();
   const c = new AbortController();
   const promised = recurse(target, c.signal, depth);
@@ -33,6 +33,9 @@ async function runAsync(depth: number): Promise<void> {
     await Promise.resolve();
     target.dispatchEvent(new Event("foo"));
   }
+  // Peak: full chain of `depth` listeners is alive plus the resolver promises
+  // at the leaf; AbortController.abort() hasn't run.
+  ctx.markPeak();
   await Promise.resolve();
   c.abort();
   await promised;
@@ -97,8 +100,8 @@ async function recurse(
 /**
  * Wrapper that runs async function as an Effection operation.
  */
-function* run(depth: number): Operation<void> {
-  yield* call(() => runAsync(depth));
+function* run(depth: number, ctx: ScenarioCtx): Operation<void> {
+  yield* call(() => runAsync(depth, ctx));
 }
 
 /**
