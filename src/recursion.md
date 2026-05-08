@@ -2,7 +2,7 @@
 
 Compare structured concurrency overhead for deeply nested async operations across libraries.
 
-**Libraries compared:** `effection`, `effection-inline`, `rxjs`, `effect`, `co`, `async-await`
+**Libraries compared:** `effection`, `effection-inline`, `rxjs`, `effect`, `effect-v4`, `co`, `async-await`
 
 ## Source Code
 
@@ -12,6 +12,7 @@ View the benchmark implementations on GitHub:
 - [effection-inline](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effection-inline.recursion.ts)
 - [rxjs](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/rxjs.recursion.ts)
 - [effect](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect.recursion.ts)
+- [effect-v4](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect-v4.recursion.ts)
 - [co](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/co.recursion.ts)
 - [async-await](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/async-await.recursion.ts)
 
@@ -113,7 +114,7 @@ async function query(sql) {
 // Get available runtimes from the data
 const runtimes = await query(`
   SELECT DISTINCT runtime FROM benchmarks 
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY runtime
 `);
 const runtimeOptions = runtimes.map(r => r.runtime);
@@ -123,7 +124,7 @@ const runtime = Generators.input(runtimeInput);
 // Get available Effection releases from the data
 const releases = await query(`
   SELECT DISTINCT releaseTag FROM benchmarks 
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY semver(releaseTag) DESC
 `);
 const releaseOptions = releases.map(r => r.releaseTag);
@@ -156,7 +157,7 @@ const comparisonData = (await query(`
     pctl(samples, 95) AS p95,
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
     AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
   ORDER BY avgTime ASC
@@ -228,74 +229,7 @@ display(Plot.plot({
 
 ---
 
-## Memory Footprint
-
-Median retained-memory change per iteration. RSS is process-wide; heap is the JS engine's used heap. Deltas can be negative when the GC runs between snapshots — the median is more robust to that noise than the average. Older releases without memory data are filtered out automatically.
-
-```js
-const memoryData = (await query(`
-  SELECT
-    benchmarkName,
-    pctl(list_transform(memorySamples, s -> s.rssDelta), 50) AS rssDeltaP50,
-    pctl(list_transform(memorySamples, s -> s.heapUsedDelta), 50) AS heapDeltaP50
-  FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
-    AND runtime = '${runtime}'
-    AND releaseTag = '${releaseTag}'
-    AND memorySamples IS NOT NULL
-  ORDER BY heapDeltaP50 ASC
-`)).map(d => ({
-  ...d,
-  rssDeltaKB: d.rssDeltaP50 / 1024,
-  heapDeltaKB: d.heapDeltaP50 / 1024,
-}));
-```
-
-```js
-display(memoryData.length === 0
-  ? html`<div class="warning">No memory data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. Pick a more recent release to see memory bars.</div>`
-  : Plot.plot({
-      title: `Median Heap Δ per Iteration (${runtime})`,
-      width,
-      height: 360,
-      x: {label: "Library"},
-      y: {label: "Heap delta (KB)", grid: true},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(memoryData, {
-          x: "benchmarkName",
-          y: "heapDeltaKB",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
-```
-
-```js
-display(memoryData.length === 0
-  ? null
-  : Plot.plot({
-      title: `Median RSS Δ per Iteration (${runtime})`,
-      width,
-      height: 360,
-      x: {label: "Library"},
-      y: {label: "RSS delta (KB)", grid: true},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(memoryData, {
-          x: "benchmarkName",
-          y: "rssDeltaKB",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
-```
+> **Memory comparison:** see the dedicated [Memory Footprint](/memory) page. The methodology and runtime caveats (V8 hoarding, mimalloc decommit) needed enough explanation that they don't fit on a per-scenario page.
 
 ---
 
@@ -313,7 +247,7 @@ const releaseData = (await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
     AND runtime = '${runtime}'
   ORDER BY semver(releaseTag), benchmarkName
 `)).map(d => ({
@@ -366,7 +300,7 @@ const runtimeCompData = (await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
     AND releaseTag = '${releaseTag}'
   ORDER BY benchmarkName, runtime
 `)).map(d => ({
@@ -419,7 +353,7 @@ const allData = await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'co.recursion', 'async-await.recursion')
+  WHERE scenario IN ('effection.recursion', 'effection-inline.recursion', 'rxjs.recursion', 'effect.recursion', 'effect-v4.recursion', 'co.recursion', 'async-await.recursion')
   ORDER BY semver(releaseTag), runtime, benchmarkName
 `);
 ```

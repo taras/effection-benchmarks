@@ -20,7 +20,8 @@ Each scenario:
 | **addEventListener** | `EventTarget` | Native `addEventListener` | `removeEventListener` on abort |
 | **effection** | `EventTarget` | `on()` + `each()` | Structured concurrency (halt) |
 | **rxjs** | `EventTarget` | `fromEvent()` | `unsubscribe()` via `takeUntil` |
-| **effect** | `EventTarget` | `Stream.fromEventListener()` | Fiber interruption |
+| **effect** | `EventTarget` | `Stream.fromEventListener()` | Fiber interruption (v3) |
+| **effect-v4** | `EventTarget` | `Stream.fromEventListener()` | Fiber interruption (v4 beta) |
 
 The **addEventListener** baseline shows the raw cost of native event handling with manual cleanup. The reactive libraries add abstraction for:
 - **Automatic cleanup** — listeners removed when cancelled
@@ -29,7 +30,7 @@ The **addEventListener** baseline shows the raw cost of native event handling wi
 
 The benchmark measures how much overhead each abstraction adds.
 
-**Libraries compared:** `effection`, `rxjs`, `effect`, `addEventListener`
+**Libraries compared:** `effection`, `rxjs`, `effect`, `effect-v4`, `addEventListener`
 
 ## Source Code
 
@@ -38,6 +39,7 @@ View the benchmark implementations on GitHub:
 - [effection](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effection.events.ts)
 - [rxjs](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/rxjs.events.ts)
 - [effect](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect.events.ts)
+- [effect-v4](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/effect-v4.events.ts)
 - [addEventListener](https://github.com/taras/effection-benchmarks/blob/main/cli/scenarios/add-event-listener.events.ts)
 
 ---
@@ -138,7 +140,7 @@ async function query(sql) {
 // Get available runtimes from the data
 const runtimes = await query(`
   SELECT DISTINCT runtime FROM benchmarks 
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
   ORDER BY runtime
 `);
 const runtimeOptions = runtimes.map(r => r.runtime);
@@ -148,7 +150,7 @@ const runtime = Generators.input(runtimeInput);
 // Get available Effection releases from the data
 const releases = await query(`
   SELECT DISTINCT releaseTag FROM benchmarks 
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
   ORDER BY semver(releaseTag) DESC
 `);
 const releaseOptions = releases.map(r => r.releaseTag);
@@ -181,7 +183,7 @@ const comparisonData = (await query(`
     pctl(samples, 95) AS p95,
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
     AND runtime = '${runtime}'
     AND releaseTag = '${releaseTag}'
   ORDER BY avgTime ASC
@@ -253,74 +255,7 @@ display(Plot.plot({
 
 ---
 
-## Memory Footprint
-
-Median retained-memory change per iteration. RSS is process-wide; heap is the JS engine's used heap. Deltas can be negative when the GC runs between snapshots — the median is more robust to that noise than the average. Older releases without memory data are filtered out automatically.
-
-```js
-const memoryData = (await query(`
-  SELECT
-    benchmarkName,
-    pctl(list_transform(memorySamples, s -> s.rssDelta), 50) AS rssDeltaP50,
-    pctl(list_transform(memorySamples, s -> s.heapUsedDelta), 50) AS heapDeltaP50
-  FROM benchmarks
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
-    AND runtime = '${runtime}'
-    AND releaseTag = '${releaseTag}'
-    AND memorySamples IS NOT NULL
-  ORDER BY heapDeltaP50 ASC
-`)).map(d => ({
-  ...d,
-  rssDeltaKB: d.rssDeltaP50 / 1024,
-  heapDeltaKB: d.heapDeltaP50 / 1024,
-}));
-```
-
-```js
-display(memoryData.length === 0
-  ? html`<div class="warning">No memory data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. Pick a more recent release to see memory bars.</div>`
-  : Plot.plot({
-      title: `Median Heap Δ per Iteration (${runtime})`,
-      width,
-      height: 360,
-      x: {label: "Library"},
-      y: {label: "Heap delta (KB)", grid: true},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(memoryData, {
-          x: "benchmarkName",
-          y: "heapDeltaKB",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
-```
-
-```js
-display(memoryData.length === 0
-  ? null
-  : Plot.plot({
-      title: `Median RSS Δ per Iteration (${runtime})`,
-      width,
-      height: 360,
-      x: {label: "Library"},
-      y: {label: "RSS delta (KB)", grid: true},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(memoryData, {
-          x: "benchmarkName",
-          y: "rssDeltaKB",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
-```
+> **Memory comparison:** see the dedicated [Memory Footprint](/memory) page. The methodology and runtime caveats (V8 hoarding, mimalloc decommit) needed enough explanation that they don't fit on a per-scenario page.
 
 ---
 
@@ -338,7 +273,7 @@ const releaseData = (await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
     AND runtime = '${runtime}'
   ORDER BY semver(releaseTag), benchmarkName
 `)).map(d => ({
@@ -391,7 +326,7 @@ const runtimeCompData = (await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
     AND releaseTag = '${releaseTag}'
   ORDER BY benchmarkName, runtime
 `)).map(d => ({
@@ -444,7 +379,7 @@ const allData = await query(`
     pctl(samples, 95) AS p95, 
     pctl(samples, 99) AS p99
   FROM benchmarks
-  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'add-event-listener.events')
+  WHERE scenario IN ('effection.events', 'rxjs.events', 'effect.events', 'effect-v4.events', 'add-event-listener.events')
   ORDER BY semver(releaseTag), runtime, benchmarkName
 `);
 ```
