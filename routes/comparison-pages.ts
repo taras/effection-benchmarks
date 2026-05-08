@@ -133,7 +133,11 @@ const db = new duckdb.AsyncDuckDB(logger, worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
 
-const parquetBuffer = await fetch("/api/benchmarks.parquet").then(r => r.arrayBuffer());
+const parquetResponse = await fetch("/api/benchmarks.parquet");
+if (!parquetResponse.ok) {
+  throw new Error(\`Failed to load benchmarks parquet: \${parquetResponse.status} \${parquetResponse.statusText}\`);
+}
+const parquetBuffer = await parquetResponse.arrayBuffer();
 await db.registerFileBuffer("benchmarks.parquet", new Uint8Array(parquetBuffer));
 const conn = await db.connect();
 await conn.query("CREATE TABLE benchmarks AS SELECT * FROM parquet_scan('benchmarks.parquet')");
