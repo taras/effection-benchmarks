@@ -90,6 +90,17 @@ Workflow:
 <YYYY-MM-DD>-<releaseTag>-<runtime>-<runtimeMajorVersion>-<scenario>.json
 ```
 
+- Each `results[]` entry carries:
+  - `samples: number[]` — per-iteration timings (ms).
+  - `memorySamples: MemorySample[]` — per-iteration retained-memory snapshots
+    (RSS + JS heap before/after, plus pre-computed deltas, in bytes). Optional
+    on `schemaVersion: 2` files written before this field existed; required on
+    `schemaVersion: 3` files written by the current harness. Same length as
+    `samples`. See `MemorySampleSchema` in `cli/lib/schema.ts`.
+  - Memory is **retained, not peak** — the GC may run between snapshots, so
+    deltas can be negative and are noisier than latency. Useful for trends,
+    not exact allocation accounting.
+
 ### Extending
 
 - Add a scenario:

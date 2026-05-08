@@ -11,6 +11,7 @@ import { exec } from "@effectionx/process";
 import type { Operation } from "effection";
 import { z } from "zod";
 import {
+  MemorySamplesSchema,
   SamplesSchema,
   type BenchmarkResult,
   type RuntimeId,
@@ -22,13 +23,14 @@ import type { ScenarioOpts } from "./mod.ts";
 
 /**
  * Schema for harness JSON output.
- * The harness outputs { results: [{ name, samples }] }.
+ * The harness outputs { results: [{ name, samples, memorySamples? }] }.
  */
 const HarnessOutputSchema = z.object({
   results: z.array(
     z.object({
       name: z.string(),
       samples: SamplesSchema,
+      memorySamples: MemorySamplesSchema.optional(),
     })
   ).min(1),
 });

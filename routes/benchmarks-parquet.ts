@@ -87,6 +87,7 @@ function* generateParquet(): Operation<Uint8Array> {
       to_json(metadata.benchmarkParams)::VARCHAR AS benchmarkParams,
       unnest(results).name AS benchmarkName,
       unnest(results).samples AS samples,
+      unnest(results).memorySamples AS memorySamples,
       filename AS sourceFile
     FROM read_json_auto('${jsonGlobPath}', filename=true, union_by_name=true)
   `);

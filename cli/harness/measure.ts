@@ -7,32 +7,49 @@
  */
 
 import { scoped, type Operation } from "effection";
-import type { ScenarioFn, MeasureOpts } from "./types.ts";
+import type { MeasureOpts, MemorySample, ScenarioFn } from "./types.ts";
+import { snapshotMemory } from "./memory.ts";
+
+export interface MeasureOutput {
+  times: number[];
+  memorySamples: MemorySample[];
+}
 
 /**
- * Measure a scenario's execution time.
+ * Measure a scenario's execution time and retained memory.
  *
  * @param scenarioFn - The scenario function to measure
  * @param opts - Measurement options
- * @returns Raw timing samples in milliseconds
+ * @returns Per-iteration timings (ms) and retained-memory samples (bytes).
  */
 export function* measure(
   scenarioFn: ScenarioFn,
   opts: MeasureOpts,
-): Operation<number[]> {
+): Operation<MeasureOutput> {
   // Warmup runs (discard results)
   for (let i = 0; i < opts.warmup; i++) {
     yield* scoped(() => scenarioFn(opts.depth));
   }
 
-  // Measured runs
   const times: number[] = [];
+  const memorySamples: MemorySample[] = [];
   for (let i = 0; i < opts.repeat; i++) {
+    const memBefore = snapshotMemory();
     const start = performance.now();
     yield* scoped(() => scenarioFn(opts.depth));
     const elapsed = performance.now() - start;
+    const memAfter = snapshotMemory();
+
     times.push(elapsed);
+    memorySamples.push({
+      rssBefore: memBefore.rss,
+      rssAfter: memAfter.rss,
+      rssDelta: memAfter.rss - memBefore.rss,
+      heapUsedBefore: memBefore.heapUsed,
+      heapUsedAfter: memAfter.heapUsed,
+      heapUsedDelta: memAfter.heapUsed - memBefore.heapUsed,
+    });
   }
 
-  return times;
+  return { times, memorySamples };
 }

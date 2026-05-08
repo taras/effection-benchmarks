@@ -13,8 +13,10 @@ import { z } from "zod";
  *
  * Version 2: Store raw timing samples instead of pre-computed aggregates.
  *            Aggregates are computed at query time in DuckDB.
+ * Version 3: Add per-iteration retained-memory samples (`memorySamples`).
+ *            Field is optional so v2 files still validate.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Phase 1 runtimes (server-side).
@@ -71,12 +73,37 @@ export const SamplesSchema = z.array(z.number().nonnegative().finite()).min(1);
 export type Samples = z.infer<typeof SamplesSchema>;
 
 /**
+ * Per-iteration retained-memory measurement, in bytes.
+ *
+ * Captured immediately before and after each scoped scenario run; deltas
+ * are pre-computed for downstream queries. "Retained" not "peak" — the GC
+ * may run between snapshots, so deltas can be negative and are noisier
+ * than latency.
+ */
+export const MemorySampleSchema = z.object({
+  rssBefore: z.number().nonnegative().finite(),
+  rssAfter: z.number().nonnegative().finite(),
+  rssDelta: z.number().finite(),
+  heapUsedBefore: z.number().nonnegative().finite(),
+  heapUsedAfter: z.number().nonnegative().finite(),
+  heapUsedDelta: z.number().finite(),
+});
+
+export type MemorySample = z.infer<typeof MemorySampleSchema>;
+
+export const MemorySamplesSchema = z.array(MemorySampleSchema);
+
+/**
  * A single result entry (one library/implementation).
  * Stores raw timing samples instead of pre-computed statistics.
+ *
+ * `memorySamples` is optional: present in v3 files written by the harness,
+ * absent in older v2 files which remain valid.
  */
 export const ResultEntrySchema = z.object({
   name: z.string().min(1),
   samples: SamplesSchema,
+  memorySamples: MemorySamplesSchema.optional(),
 });
 
 /**

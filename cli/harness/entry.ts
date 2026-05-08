@@ -73,7 +73,7 @@ main(function* () {
   }
 
   // Run the scenario
-  const samples = yield* measure(scenario.run, {
+  const { times, memorySamples } = yield* measure(scenario.run, {
     repeat: args.repeat,
     warmup: args.warmup,
     depth: args.depth,
@@ -82,7 +82,8 @@ main(function* () {
   // Build result
   const result: ScenarioResult = {
     name: scenario.library,
-    samples,
+    samples: times,
+    memorySamples,
   };
 
   // Output
@@ -93,10 +94,10 @@ main(function* () {
     console.log(JSON.stringify(output));
   } else {
     // For human-readable output, compute and display stats
-    const stats = calculateStats(samples);
+    const stats = calculateStats(times);
     console.log(`Scenario: ${scenario.name}`);
     console.log(`Library: ${scenario.library}`);
-    console.log(`Samples: ${samples.length}`);
+    console.log(`Samples: ${times.length}`);
     console.log(`Stats (computed):`);
     console.log(`  avgTime: ${stats.avgTime.toFixed(3)} ms`);
     console.log(`  minTime: ${stats.minTime.toFixed(3)} ms`);
@@ -105,6 +106,15 @@ main(function* () {
     console.log(`  p50: ${stats.p50.toFixed(3)} ms`);
     console.log(`  p95: ${stats.p95.toFixed(3)} ms`);
     console.log(`  p99: ${stats.p99.toFixed(3)} ms`);
+
+    const rssDeltas = memorySamples.map((s) => s.rssDelta);
+    const heapDeltas = memorySamples.map((s) => s.heapUsedDelta);
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    console.log(`Memory (retained, bytes):`);
+    console.log(`  avg rssDelta:      ${avg(rssDeltas).toFixed(0)}`);
+    console.log(`  max rssDelta:      ${Math.max(...rssDeltas).toFixed(0)}`);
+    console.log(`  avg heapUsedDelta: ${avg(heapDeltas).toFixed(0)}`);
+    console.log(`  max heapUsedDelta: ${Math.max(...heapDeltas).toFixed(0)}`);
   }
 
   exitProcess(0);

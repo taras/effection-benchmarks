@@ -39,6 +39,23 @@ export interface MeasureOpts {
 }
 
 /**
+ * Per-iteration retained-memory measurement. Bytes.
+ *
+ * Captured by reading the runtime's memory API immediately before and after
+ * the scoped scenario invocation; deltas are pre-computed. "Retained" not
+ * "peak" — the GC may run between snapshots, so deltas can be negative and
+ * are noisier than latency.
+ */
+export interface MemorySample {
+  rssBefore: number;
+  rssAfter: number;
+  rssDelta: number;
+  heapUsedBefore: number;
+  heapUsedAfter: number;
+  heapUsedDelta: number;
+}
+
+/**
  * Result from running a single scenario.
  */
 export interface ScenarioResult {
@@ -46,6 +63,8 @@ export interface ScenarioResult {
   name: string;
   /** Raw timing samples in milliseconds */
   samples: number[];
+  /** Retained-memory samples, one per timing sample (same length as `samples`). */
+  memorySamples: MemorySample[];
 }
 
 /**
