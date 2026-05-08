@@ -147,9 +147,9 @@ const releaseTag = Generators.input(releaseInput);
   <div class="card">${releaseInput}</div>
 </div>
 
-## Median Post-GC Retained Heap
+## Median Post-GC Retained Heap (relative)
 
-Per-library, faceted by scenario type. This is the steady-state heap floor when running each scenario.
+Per-library, faceted by scenario type. Bars show **how much more memory each library retains compared to the most efficient library in the same scenario type** — the lightest library sits at 0 and others show their cost above it. The absolute floor is around 37-41 MB across the board (V8 + module/runtime + JIT code + scenario state); the differences between libraries (0.1-3 MB) are the actual signal but get visually drowned out when plotted as absolute values.
 
 ```js
 const retainedData = (await query(`
@@ -166,31 +166,44 @@ const retainedData = (await query(`
     AND memorySamples IS NOT NULL
     AND len(list_filter(memorySamples, s -> s.heapUsedAfterGc IS NOT NULL)) > 0
   ORDER BY scenarioType, heapAfterGcP50 ASC
-`)).map(d => ({
+`));
+
+// Subtract the per-scenario-type minimum so each bar shows the library's
+// "extra cost" above the lightest implementation in that scenario.
+const minByScenario = {};
+for (const d of retainedData) {
+  const cur = minByScenario[d.scenarioType];
+  if (cur === undefined || d.heapAfterGcP50 < cur) minByScenario[d.scenarioType] = d.heapAfterGcP50;
+}
+const retainedRelative = retainedData.map(d => ({
   ...d,
-  heapAfterGcMB: d.heapAfterGcP50 / 1024 / 1024,
+  heapAboveMinKB: (d.heapAfterGcP50 - minByScenario[d.scenarioType]) / 1024,
+  heapAbsoluteMB: d.heapAfterGcP50 / 1024 / 1024,
 }));
 ```
 
 ```js
-display(retainedData.length === 0
+display(retainedRelative.length === 0
   ? html`<div class="warning">No post-GC heap data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. The forced-GC measurement was added in schema v4 — pick a release that's been benchmarked since then.</div>`
   : Plot.plot({
-      title: `Median Post-GC Retained Heap — ${runtime} / ${releaseTag}`,
+      title: `Post-GC Retained Heap above min — ${runtime} / ${releaseTag}`,
       width,
       height: 420,
       x: {label: "Library"},
-      y: {label: "Heap (MB)", grid: true},
+      y: {label: "Heap above scenario min (KB)", grid: true},
       fx: {label: "Scenario type"},
       color: {legend: true, scheme: "tableau10"},
       marks: [
-        Plot.barY(retainedData, {
+        Plot.barY(retainedRelative, {
           x: "benchmarkName",
-          y: "heapAfterGcMB",
+          y: "heapAboveMinKB",
           fx: "scenarioType",
           fill: "benchmarkName",
           sort: {x: "y"},
           tip: true,
+          channels: {
+            "absolute (MB)": d => d.heapAbsoluteMB.toFixed(2),
+          },
         }),
         Plot.ruleY([0]),
       ],
