@@ -4,7 +4,7 @@
     "releaseTag": "4.1.0-alpha.0",
     "runtime": "bun",
     "runtimeMajorVersion": 1,
-    "timestamp": "2026-05-08T16:31:21.937Z",
+    "timestamp": "2026-05-08T23:51:33.132Z",
     "runner": {
       "os": "linux",
       "arch": "x86_64"
@@ -12,7 +12,7 @@
     "scenario": "effect.recursion",
     "benchmarkParams": {
       "repeat": 10,
-      "warmup": 3,
+      "warmup": 10,
       "depth": 100
     },
     "source": "npm"
@@ -21,127 +21,127 @@
     {
       "name": "effect",
       "samples": [
-        1.899045000000001,
-        1.4216789999999833,
-        1.0315760000000296,
-        1.083853999999974,
-        1.1183300000000145,
-        0.8902110000000221,
-        0.8272230000000036,
-        0.7130579999999895,
-        0.6698470000000043,
-        0.733716999999956
+        1.2446369999999547,
+        1.170127999999977,
+        0.7036360000000172,
+        0.8499390000000062,
+        0.6803530000000251,
+        0.6930360000000064,
+        0.7382109999999784,
+        0.6761549999999943,
+        0.6075559999999882,
+        0.6053310000000351
       ],
       "memorySamples": [
         {
-          "rssBefore": 127758336,
-          "rssAfter": 129462272,
-          "rssDelta": 1703936,
+          "rssBefore": 134975488,
+          "rssAfter": 135761920,
+          "rssDelta": 786432,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 129462272
+          "rssPeak": 135761920
         },
         {
-          "rssBefore": 133001216,
-          "rssAfter": 133132288,
-          "rssDelta": 131072,
-          "heapUsedBefore": 212874,
-          "heapUsedAfter": 212874,
-          "heapUsedDelta": 0,
-          "heapUsedAfterGc": 212874,
-          "heapUsedPeak": 212874,
-          "rssPeak": 133132288
-        },
-        {
-          "rssBefore": 133263360,
-          "rssAfter": 133394432,
-          "rssDelta": 131072,
-          "heapUsedBefore": 212874,
-          "heapUsedAfter": 212874,
-          "heapUsedDelta": 0,
-          "heapUsedAfterGc": 212874,
-          "heapUsedPeak": 212874,
-          "rssPeak": 133394432
-        },
-        {
-          "rssBefore": 133525504,
-          "rssAfter": 133525504,
+          "rssBefore": 137465856,
+          "rssAfter": 137465856,
           "rssDelta": 0,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 133525504
+          "rssPeak": 137465856
         },
         {
-          "rssBefore": 129114112,
-          "rssAfter": 129245184,
+          "rssBefore": 137596928,
+          "rssAfter": 137728000,
           "rssDelta": 131072,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 129245184
+          "rssPeak": 137728000
         },
         {
-          "rssBefore": 129638400,
-          "rssAfter": 129769472,
+          "rssBefore": 137728000,
+          "rssAfter": 137990144,
+          "rssDelta": 262144,
+          "heapUsedBefore": 212874,
+          "heapUsedAfter": 212874,
+          "heapUsedDelta": 0,
+          "heapUsedAfterGc": 212874,
+          "heapUsedPeak": 212874,
+          "rssPeak": 137990144
+        },
+        {
+          "rssBefore": 136310784,
+          "rssAfter": 136310784,
+          "rssDelta": 0,
+          "heapUsedBefore": 212874,
+          "heapUsedAfter": 212874,
+          "heapUsedDelta": 0,
+          "heapUsedAfterGc": 212874,
+          "heapUsedPeak": 212874,
+          "rssPeak": 136310784
+        },
+        {
+          "rssBefore": 136310784,
+          "rssAfter": 136441856,
           "rssDelta": 131072,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 129769472
+          "rssPeak": 136441856
         },
         {
-          "rssBefore": 130031616,
-          "rssAfter": 130162688,
-          "rssDelta": 131072,
-          "heapUsedBefore": 212874,
-          "heapUsedAfter": 212874,
-          "heapUsedDelta": 0,
-          "heapUsedAfterGc": 212874,
-          "heapUsedPeak": 212874,
-          "rssPeak": 130162688
-        },
-        {
-          "rssBefore": 130555904,
-          "rssAfter": 130555904,
+          "rssBefore": 136572928,
+          "rssAfter": 136572928,
           "rssDelta": 0,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 130555904
+          "rssPeak": 136572928
         },
         {
-          "rssBefore": 130949120,
-          "rssAfter": 130949120,
+          "rssBefore": 136572928,
+          "rssAfter": 136572928,
           "rssDelta": 0,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 130949120
+          "rssPeak": 136572928
         },
         {
-          "rssBefore": 130949120,
-          "rssAfter": 130949120,
+          "rssBefore": 136572928,
+          "rssAfter": 136572928,
           "rssDelta": 0,
           "heapUsedBefore": 212874,
           "heapUsedAfter": 212874,
           "heapUsedDelta": 0,
           "heapUsedAfterGc": 212874,
           "heapUsedPeak": 212874,
-          "rssPeak": 130949120
+          "rssPeak": 136572928
+        },
+        {
+          "rssBefore": 136704000,
+          "rssAfter": 136704000,
+          "rssDelta": 0,
+          "heapUsedBefore": 212874,
+          "heapUsedAfter": 212874,
+          "heapUsedDelta": 0,
+          "heapUsedAfterGc": 212874,
+          "heapUsedPeak": 212874,
+          "rssPeak": 136704000
         }
       ]
     }
