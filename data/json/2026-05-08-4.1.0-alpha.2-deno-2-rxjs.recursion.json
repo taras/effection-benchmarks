@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 3,
+  "metadata": {
+    "releaseTag": "4.1.0-alpha.2",
+    "runtime": "deno",
+    "runtimeMajorVersion": 2,
+    "timestamp": "2026-05-08T12:36:53.171Z",
+    "runner": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "scenario": "rxjs.recursion",
+    "benchmarkParams": {
+      "repeat": 10,
+      "warmup": 3,
+      "depth": 100
+    },
+    "source": "npm"
+  },
+  "results": [
+    {
+      "name": "rxjs",
+      "samples": [
+        0.5969729999999913,
+        0.5403589999999951,
+        0.6384559999999908,
+        0.45986800000000017,
+        0.44619699999998375,
+        0.3620819999999867,
+        0.3518270000000143,
+        1.5468649999999968,
+        0.15458200000000488,
+        0.18174199999998564
+      ],
+      "memorySamples": [
+        {
+          "rssBefore": 116920320,
+          "rssAfter": 117391360,
+          "rssDelta": 471040,
+          "heapUsedBefore": 30120040,
+          "heapUsedAfter": 30604896,
+          "heapUsedDelta": 484856
+        },
+        {
+          "rssBefore": 117403648,
+          "rssAfter": 117690368,
+          "rssDelta": 286720,
+          "heapUsedBefore": 29889824,
+          "heapUsedAfter": 29650856,
+          "heapUsedDelta": -238968
+        },
+        {
+          "rssBefore": 117690368,
+          "rssAfter": 118034432,
+          "rssDelta": 344064,
+          "heapUsedBefore": 30170408,
+          "heapUsedAfter": 31172488,
+          "heapUsedDelta": 1002080
+        },
+        {
+          "rssBefore": 118038528,
+          "rssAfter": 118644736,
+          "rssDelta": 606208,
+          "heapUsedBefore": 31173288,
+          "heapUsedAfter": 31463440,
+          "heapUsedDelta": 290152
+        },
+        {
+          "rssBefore": 118669312,
+          "rssAfter": 119107584,
+          "rssDelta": 438272,
+          "heapUsedBefore": 31464216,
+          "heapUsedAfter": 30586272,
+          "heapUsedDelta": -877944
+        },
+        {
+          "rssBefore": 119173120,
+          "rssAfter": 119455744,
+          "rssDelta": 282624,
+          "heapUsedBefore": 30588512,
+          "heapUsedAfter": 31553176,
+          "heapUsedDelta": 964664
+        },
+        {
+          "rssBefore": 119455744,
+          "rssAfter": 119730176,
+          "rssDelta": 274432,
+          "heapUsedBefore": 31553720,
+          "heapUsedAfter": 31165000,
+          "heapUsedDelta": -388720
+        },
+        {
+          "rssBefore": 119730176,
+          "rssAfter": 120266752,
+          "rssDelta": 536576,
+          "heapUsedBefore": 31573512,
+          "heapUsedAfter": 26427736,
+          "heapUsedDelta": -5145776
+        },
+        {
+          "rssBefore": 120266752,
+          "rssAfter": 120287232,
+          "rssDelta": 20480,
+          "heapUsedBefore": 26428280,
+          "heapUsedAfter": 26693728,
+          "heapUsedDelta": 265448
+        },
+        {
+          "rssBefore": 120287232,
+          "rssAfter": 120328192,
+          "rssDelta": 40960,
+          "heapUsedBefore": 26694272,
+          "heapUsedAfter": 26959416,
+          "heapUsedDelta": 265144
+        }
+      ]
+    }
+  ]
+}
