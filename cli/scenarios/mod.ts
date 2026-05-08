@@ -18,6 +18,8 @@ import { rxjsEvents } from "./rxjs.events.ts";
 import { coRecursion } from "./co.recursion.ts";
 import { effectRecursion } from "./effect.recursion.ts";
 import { effectEvents } from "./effect.events.ts";
+import { effectV4Recursion } from "./effect-v4.recursion.ts";
+import { effectV4Events } from "./effect-v4.events.ts";
 import { addEventListenerEvents } from "./add-event-listener.events.ts";
 
 /**
@@ -33,6 +35,8 @@ export const scenarios: Record<string, Scenario> = {
   "co.recursion": coRecursion,
   "effect.recursion": effectRecursion,
   "effect.events": effectEvents,
+  "effect-v4.recursion": effectV4Recursion,
+  "effect-v4.events": effectV4Events,
   "add-event-listener.events": addEventListenerEvents,
 };
 

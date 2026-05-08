@@ -59,7 +59,11 @@ const configliere = new Configliere({
   },
   "effect-version": {
     schema: z.string().optional(),
-    description: "Effect version override",
+    description: "Effect (v3) version override",
+  },
+  "effect-v4-version": {
+    schema: z.string().optional(),
+    description: "Effect v4 version override (npm-aliased as effect-v4)",
   },
   "co-version": {
     schema: z.string().optional(),
@@ -102,6 +106,7 @@ const configliere = new Configliere({
 function loadConfig(): {
   rxjs: string;
   effect: string;
+  "effect-v4": string;
   co: string;
   inline: string;
 } {
@@ -114,6 +119,7 @@ function loadConfig(): {
     return {
       rxjs: "7.8.1",
       effect: "3.14.0",
+      "effect-v4": "4.0.0-beta.64",
       co: "4.6.0",
       inline: "https://pkg.pr.new/thefrontside/effectionx/@effectionx/inline@117",
     };
@@ -306,6 +312,7 @@ export function* runCommand(args: string[]): Operation<number> {
   const comparisonVersions = {
     rxjs: config["rxjs-version"] ?? defaultVersions.rxjs,
     effect: config["effect-version"] ?? defaultVersions.effect,
+    "effect-v4": config["effect-v4-version"] ?? defaultVersions["effect-v4"],
     co: config["co-version"] ?? defaultVersions.co,
     inline: config["inline-version"] ?? defaultVersions.inline,
   };
@@ -320,7 +327,7 @@ export function* runCommand(args: string[]): Operation<number> {
   console.log(`Runtimes: ${runtimes.join(", ")}`);
   console.log(`Scenarios: ${SCENARIOS.length} total`);
   console.log(`Options: repeat=${config.repeat}, depth=${config.depth}, warmup=${config.warmup}`);
-  console.log(`Comparison libs: rxjs@${comparisonVersions.rxjs}, effect@${comparisonVersions.effect}, co@${comparisonVersions.co}`);
+  console.log(`Comparison libs: rxjs@${comparisonVersions.rxjs}, effect@${comparisonVersions.effect}, effect-v4@${comparisonVersions["effect-v4"]}, co@${comparisonVersions.co}`);
   console.log(`Inline plugin: ${comparisonVersions.inline}`);
   if (useCache) {
     console.log(`Workspace caching: enabled`);

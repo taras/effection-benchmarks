@@ -18,7 +18,8 @@
     "lint": "deno lint",
     "fmt": "deno fmt",
     "bench": "deno run -A cli/main.ts",
-    "bench:check": "deno check cli/**/*.ts"
+    "bench:check": "deno check cli/**/*.ts",
+    "bench:ingest": "deno run -A cli/main.ts ingest"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "dom.iterable", "dom"],
@@ -35,6 +36,7 @@
     "@std/fs": "jsr:@std/fs@^1.0.0",
     "rxjs": "npm:rxjs@^7.8.1",
     "effect": "npm:effect@^3.14.0",
+    "effect-v4": "npm:effect@4.0.0-beta.64",
     "co": "npm:co@^4.6.0",
     "revolution": "https://deno.land/x/revolution@0.8.0/mod.ts",
     "revolution/jsx-runtime": "https://deno.land/x/revolution@0.8.0/jsx-runtime.ts",
