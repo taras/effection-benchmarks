@@ -256,31 +256,50 @@ const rssData = (await query(`
   ...d,
   rssDeltaKB: d.rssDeltaAvg / 1024,
 }));
+
+const rssRecursion = rssData.filter(d => d.scenarioType === "recursion");
+const rssEvents = rssData.filter(d => d.scenarioType === "events");
+
+// Independent plots per scenario type so events bars (often 100s of KB) don't
+// crush recursion bars (often single-digit KB) into invisibility.
+function rssPlot(rows, label) {
+  if (rows.length === 0) return null;
+  return Plot.plot({
+    title: `${label} — Average RSS Δ per Iteration (${runtime} / ${releaseTag})`,
+    width,
+    height: 320,
+    marginTop: 30,
+    x: {label: "Library"},
+    y: {label: "RSS delta avg (KB)", grid: true},
+    color: {legend: true, scheme: "tableau10"},
+    marks: [
+      Plot.barY(rows, {
+        x: "benchmarkName",
+        y: "rssDeltaKB",
+        fill: "benchmarkName",
+        sort: {x: "y"},
+        tip: true,
+      }),
+      // Absolute-KB label above each bar. For negative bars (Bun decommit)
+      // we anchor the label at the bar end via dy that flips with sign.
+      Plot.text(rows, {
+        x: "benchmarkName",
+        y: "rssDeltaKB",
+        text: d => `${d.rssDeltaKB.toFixed(0)} KB`,
+        textAnchor: "middle",
+        dy: d => d.rssDeltaKB >= 0 ? -8 : 14,
+        fontSize: 10,
+      }),
+      Plot.ruleY([0]),
+    ],
+  });
+}
 ```
 
 ```js
 display(rssData.length === 0
   ? html`<div class="warning">No memory data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>.</div>`
-  : Plot.plot({
-      title: `Average RSS Δ per Iteration — ${runtime} / ${releaseTag}`,
-      width,
-      height: 420,
-      x: {label: "Library"},
-      y: {label: "RSS delta avg (KB)", grid: true},
-      fx: {label: "Scenario type"},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(rssData, {
-          x: "benchmarkName",
-          y: "rssDeltaKB",
-          fx: "scenarioType",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
+  : html`<div>${rssPlot(rssRecursion, "Recursion")}${rssPlot(rssEvents, "Events")}</div>`)
 ```
 
 ---
