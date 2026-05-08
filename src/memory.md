@@ -57,7 +57,14 @@ const db = new duckdb.AsyncDuckDB(logger, worker);
 await db.instantiate(bundle.mainModule);
 await db.open({});
 
-const parquetResponse = await fetch("/api/benchmarks.parquet");
+// cache: 'no-cache' forces the browser to revalidate with the origin on every
+// page load (sends If-None-Match with the cached ETag; origin returns 304 if
+// unchanged, 200 with new content if it is). Without this, browsers honor the
+// max-age=3600 from the parquet response and serve stale parquet data from
+// disk cache for up to an hour after a regenerate — including across schema
+// upgrades, where the dashboard's chart code references fields the cached
+// parquet doesn't have.
+const parquetResponse = await fetch("/api/benchmarks.parquet", { cache: "no-cache" });
 if (!parquetResponse.ok) {
   throw new Error(`Failed to load benchmarks parquet: ${parquetResponse.status} ${parquetResponse.statusText}`);
 }
