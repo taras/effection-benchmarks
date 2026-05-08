@@ -19,16 +19,19 @@ a recursive chain using \`Effect.gen()\` that bottoms out with 100
 efficiency.
 `.trim();
 import { call, type Operation } from "effection";
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
- * Recursive Effect.
+ * Recursive Effect. `ctx` is captured by closure and used to mark peak
+ * memory inside the deepest Effect.gen frame.
  */
-function recurse(depth: number): Effect.Effect<void, never, never> {
+function recurse(depth: number, ctx: ScenarioCtx): Effect.Effect<void, never, never> {
   return Effect.gen(function* () {
     if (depth > 1) {
-      yield* recurse(depth - 1);
+      yield* recurse(depth - 1, ctx);
     } else {
+      // Peak: all `depth` Effect.gen frames are alive on the fiber stack.
+      ctx.markPeak();
       for (let i = 0; i < 100; i++) {
         yield* Effect.promise(() => Promise.resolve());
       }
@@ -39,8 +42,8 @@ function recurse(depth: number): Effect.Effect<void, never, never> {
 /**
  * Wrapper that runs Effect as an Effection operation.
  */
-function* run(depth: number): Operation<void> {
-  yield* call(() => Effect.runPromise(recurse(depth)));
+function* run(depth: number, ctx: ScenarioCtx): Operation<void> {
+  yield* call(() => Effect.runPromise(recurse(depth, ctx)));
 }
 
 /**

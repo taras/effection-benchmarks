@@ -27,12 +27,14 @@ Effect v3 events scenario so the two majors are directly comparable.
 `.trim();
 
 import { call, type Operation } from "effection";
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
- * Run the Effect v4 events benchmark.
+ * Run the Effect v4 events benchmark. `ctx` is captured by closure and used
+ * to mark peak memory after all events have been dispatched and before fiber
+ * interruption tears the chain down.
  */
-const effectRun = (depth: number): Effect.Effect<void> =>
+const effectRun = (depth: number, ctx: ScenarioCtx): Effect.Effect<void> =>
   Effect.gen(function* () {
     const target = new EventTarget();
 
@@ -47,6 +49,10 @@ const effectRun = (depth: number): Effect.Effect<void> =>
       yield* Effect.yieldNow;
       target.dispatchEvent(new Event("foo"));
     }
+
+    // Peak: full chain of `depth` Stream subscriptions is alive and 100
+    // events have propagated; fiber teardown hasn't started.
+    ctx.markPeak();
 
     yield* Effect.yieldNow;
 
@@ -89,8 +95,8 @@ function recurse(
 /**
  * Wrapper that runs Effect as an Effection operation.
  */
-function* run(depth: number): Operation<void> {
-  yield* call(() => Effect.runPromise(effectRun(depth)));
+function* run(depth: number, ctx: ScenarioCtx): Operation<void> {
+  yield* call(() => Effect.runPromise(effectRun(depth, ctx)));
 }
 
 /**

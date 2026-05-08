@@ -19,12 +19,12 @@ Tests subscription management, Subject-based cancellation via \`takeUntil()\`,
 and cleanup when the event stream completes.
 `.trim();
 import { action, type Operation, sleep, spawn } from "effection";
-import type { Scenario } from "../harness/types.ts";
+import type { Scenario, ScenarioCtx } from "../harness/types.ts";
 
 /**
  * Run the RxJS events benchmark.
  */
-function* run(depth: number): Operation<void> {
+function* run(depth: number, ctx: ScenarioCtx): Operation<void> {
   const target = new EventTarget();
   const abort = new Subject<void>();
   const promised = yield* spawn(() =>
@@ -43,6 +43,9 @@ function* run(depth: number): Operation<void> {
     yield* sleep(0);
     target.dispatchEvent(new Event("foo"));
   }
+  // Peak: full subscription chain is alive and 100 events have propagated;
+  // takeUntil(abort) hasn't fired yet.
+  ctx.markPeak();
   yield* sleep(0);
   abort.next();
   yield* promised;

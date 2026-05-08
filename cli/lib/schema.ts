@@ -19,8 +19,13 @@ import { z } from "zod";
  *            Field is optional so v3 files still validate. The harness now
  *            forces a major GC after each iteration's scoped block before
  *            taking the snapshot, eliminating GC-cycle pollution.
+ * Version 5: Add peak heap and RSS (`heapUsedPeak` / `rssPeak`) to
+ *            `MemorySample`. Scenarios call `ScenarioCtx.markPeak()` at
+ *            their high-water moment; the harness combines those with the
+ *            before/after snapshots to compute a per-iteration peak. Both
+ *            fields are optional so v4 files still validate.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Phase 1 runtimes (server-side).
@@ -98,6 +103,10 @@ export const MemorySampleSchema = z.object({
   heapUsedAfter: z.number().nonnegative().finite(),
   heapUsedDelta: z.number().finite(),
   heapUsedAfterGc: z.number().nonnegative().finite().optional(),
+  /** Peak heap observed during the iteration (v5+). */
+  heapUsedPeak: z.number().nonnegative().finite().optional(),
+  /** Peak RSS observed during the iteration (v5+). */
+  rssPeak: z.number().nonnegative().finite().optional(),
 });
 
 export type MemorySample = z.infer<typeof MemorySampleSchema>;

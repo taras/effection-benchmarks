@@ -7,10 +7,24 @@
 import type { Operation } from "effection";
 
 /**
+ * Per-iteration context handed to a scenario, used to record peak memory.
+ *
+ * The scenario calls `markPeak()` at the moment it knows is the high-water
+ * mark of its working set (e.g. inside the deepest recursion frame, or
+ * after listeners are registered but before they're torn down). The harness
+ * snapshots memory at each mark and keeps the running max alongside the
+ * before/after snapshots it already takes.
+ */
+export interface ScenarioCtx {
+  /** Snapshot memory now and update the running peak. Safe to call multiple times. */
+  markPeak(): void;
+}
+
+/**
  * A benchmark scenario function.
  * Takes a depth parameter and runs the benchmark workload.
  */
-export type ScenarioFn = (depth: number) => Operation<void>;
+export type ScenarioFn = (depth: number, ctx: ScenarioCtx) => Operation<void>;
 
 /**
  * A registered scenario with metadata.
@@ -59,6 +73,16 @@ export interface MemorySample {
    * `Bun.gc()`); absent otherwise.
    */
   heapUsedAfterGc?: number;
+  /**
+   * Peak heap observed during the iteration. Computed as the max across the
+   * before/after snapshots and any explicit `ScenarioCtx.markPeak()` snapshots
+   * the scenario takes. Present in v5 schema and later.
+   */
+  heapUsedPeak?: number;
+  /**
+   * Peak RSS observed during the iteration, computed the same way.
+   */
+  rssPeak?: number;
 }
 
 /**
