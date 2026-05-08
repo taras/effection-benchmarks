@@ -32,7 +32,10 @@ export function parseHarnessArgs(args: string[]): HarnessArgs {
     scenario: "",
     depth: 100,
     repeat: 10,
-    warmup: 3,
+    // Warmup of 10 (rather than 3) so V8's first-time arena commits — which
+    // can run into the tens of MB on event-heavy scenarios — land in warmup
+    // instead of inflating the first measured iteration's avg RSS Δ.
+    warmup: 10,
     json: false,
   };
 
@@ -54,7 +57,7 @@ export function parseHarnessArgs(args: string[]): HarnessArgs {
         i++;
         break;
       case "--warmup":
-        result.warmup = parseInt(next || "3", 10);
+        result.warmup = parseInt(next || "10", 10);
         i++;
         break;
       case "--json":
