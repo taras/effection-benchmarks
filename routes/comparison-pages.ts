@@ -532,9 +532,9 @@ The \`heapUsedAfter - heapUsedBefore\` delta is contaminated by whether a natura
 
 ## RSS varies wildly across runtimes
 
-The Median RSS Δ chart looks completely different depending on the runtime, and **most of the difference is allocator behavior, not library behavior**:
+The Average RSS Δ chart looks completely different depending on the runtime, and **most of the difference is allocator behavior, not library behavior**:
 
-- **Node / Deno (V8)**: mostly \`0\`. V8 hoards memory and grows arenas in 128 KB chunks, so per-iteration RSS deltas are quantized noise.
+- **Node / Deno (V8)**: V8 hoards memory and grows arenas in 128 KB chunks, so per-iteration RSS deltas are quantized — any single iteration is either 0 or a 128 KB jump. We average across iterations because the median is always 0; the average reveals real growth.
 - **Bun (mimalloc)**: often *negative*. Bun's allocator decommits pages back to the OS via \`madvise(MADV_FREE)\` after \`scoped()\` teardown, so RSS literally drops between iterations.
 - **Bun heap accounting is sparse**: \`process.memoryUsage().heapUsed\` doesn't track the JSC heap meaningfully, so on Bun **read RSS instead of heap**; on Node/Deno **read heap instead of RSS**.
 
@@ -632,9 +632,11 @@ display(retainedRelative.length === 0
     }))
 \`\`\`
 
-## Median RSS Δ per Iteration
+## Average RSS Δ per Iteration
 
-Process-wide RSS change from start to end of each iteration. **This chart is mostly meaningful on Bun**; on Node/Deno bars will sit near 0 because V8 doesn't return pages between iterations.
+Process-wide RSS change from start to end of each iteration, **averaged** across all measured iterations rather than median. The median was quantized by V8's 128 KB arena-growth chunks — most iterations show 0 and a few show 128 KB, so the median collapses to 0 and hides real per-iteration growth. The average captures it: e.g. \`effection.events\` on Node 4.x shows ~2-3 MB per iteration on average even though its median is 0.
+
+Note Bun runs negative on this chart for many scenarios because mimalloc decommits pages back to the OS after \`scoped()\` teardown.
 
 \`\`\`js
 const rssData = (await query(\`
@@ -644,15 +646,15 @@ const rssData = (await query(\`
       WHEN scenario LIKE '%.recursion' THEN 'recursion'
       WHEN scenario LIKE '%.events' THEN 'events'
     END AS scenarioType,
-    pctl(list_transform(memorySamples, s -> s.rssDelta), 50) AS rssDeltaP50
+    list_avg(list_transform(memorySamples, s -> s.rssDelta)) AS rssDeltaAvg
   FROM benchmarks
   WHERE runtime = '\${runtime}'
     AND releaseTag = '\${releaseTag}'
     AND memorySamples IS NOT NULL
-  ORDER BY scenarioType, rssDeltaP50 ASC
+  ORDER BY scenarioType, rssDeltaAvg ASC
 \`)).map(d => ({
   ...d,
-  rssDeltaKB: d.rssDeltaP50 / 1024,
+  rssDeltaKB: d.rssDeltaAvg / 1024,
 }));
 \`\`\`
 
@@ -660,11 +662,11 @@ const rssData = (await query(\`
 display(rssData.length === 0
   ? html\`<div class="warning">No memory data for release <strong>\${releaseTag}</strong> on <strong>\${runtime}</strong>.</div>\`
   : Plot.plot({
-      title: \`Median RSS Δ per Iteration — \${runtime} / \${releaseTag}\`,
+      title: \`Average RSS Δ per Iteration — \${runtime} / \${releaseTag}\`,
       width,
       height: 420,
       x: {label: "Library"},
-      y: {label: "RSS delta (KB)", grid: true},
+      y: {label: "RSS delta avg (KB)", grid: true},
       fx: {label: "Scenario type"},
       color: {legend: true, scheme: "tableau10"},
       marks: [
