@@ -180,35 +180,57 @@ const retainedRelative = retainedData.map(d => ({
   heapAboveMinKB: (d.heapAfterGcP50 - minByScenario[d.scenarioType]) / 1024,
   heapAbsoluteMB: d.heapAfterGcP50 / 1024 / 1024,
 }));
+
+const retainedRecursion = retainedRelative.filter(d => d.scenarioType === "recursion");
+const retainedEvents = retainedRelative.filter(d => d.scenarioType === "events");
+
+// Render two independent plots so each scenario type gets its own y-scale.
+// (Plot's fx faceting always shares the y axis, which crushes recursion bars
+// when events bars are 50× taller.)
+function retainedPlot(rows, label) {
+  if (rows.length === 0) return null;
+  return Plot.plot({
+    title: `${label} — Post-GC Retained Heap above min (${runtime} / ${releaseTag})`,
+    width,
+    height: 320,
+    marginTop: 30,
+    x: {label: "Library"},
+    y: {label: "Heap above scenario min (KB)", grid: true},
+    color: {legend: true, scheme: "tableau10"},
+    marks: [
+      Plot.barY(rows, {
+        x: "benchmarkName",
+        y: "heapAboveMinKB",
+        fill: "benchmarkName",
+        sort: {x: "y"},
+        tip: true,
+        channels: {
+          "absolute (MB)": d => d.heapAbsoluteMB.toFixed(2),
+        },
+      }),
+      // Absolute-MB label above each bar so the baseline (0-height) bar
+      // still tells you the library's actual heap floor.
+      Plot.text(rows, {
+        x: "benchmarkName",
+        y: "heapAboveMinKB",
+        text: d => `${d.heapAbsoluteMB.toFixed(2)} MB`,
+        textAnchor: "middle",
+        dy: -8,
+        fontSize: 10,
+      }),
+      Plot.ruleY([0]),
+    ],
+  });
+}
 ```
 
 ```js
 display(retainedRelative.length === 0
   ? html`<div class="warning">No post-GC heap data for release <strong>${releaseTag}</strong> on <strong>${runtime}</strong>. The forced-GC measurement was added in schema v4 — pick a release that's been benchmarked since then.</div>`
-  : Plot.plot({
-      title: `Post-GC Retained Heap above min — ${runtime} / ${releaseTag}`,
-      width,
-      height: 420,
-      x: {label: "Library"},
-      y: {label: "Heap above scenario min (KB)", grid: true},
-      fx: {label: "Scenario type"},
-      color: {legend: true, scheme: "tableau10"},
-      marks: [
-        Plot.barY(retainedRelative, {
-          x: "benchmarkName",
-          y: "heapAboveMinKB",
-          fx: "scenarioType",
-          fill: "benchmarkName",
-          sort: {x: "y"},
-          tip: true,
-          channels: {
-            "absolute (MB)": d => d.heapAbsoluteMB.toFixed(2),
-          },
-        }),
-        Plot.ruleY([0]),
-      ],
-    }))
+  : html`<div>${retainedPlot(retainedRecursion, "Recursion")}${retainedPlot(retainedEvents, "Events")}</div>`)
 ```
+
+> The bar height shows each library's heap above the most efficient one in the same scenario type — the lightest library sits at 0 by definition. The number above each bar is its absolute median post-GC heap in MB, so you can read the baseline value without hunting through the data.
 
 ## Average RSS Δ per Iteration
 
