@@ -116,18 +116,25 @@ jobs:
           lscpu | grep -E "Model name|CPU\(s\)|Thread"
       
       # Run benchmarks
+      # Clear any pre-existing JSON results from the checkout so the artifact
+      # this job uploads contains only what THIS (version, runtime) just wrote.
+      # Otherwise every matrix job uploads ~all pre-existing files, and the
+      # aggregate step's per-filename `cp` race ends up with old content
+      # winning for most files (only the artifact processed last for a given
+      # filename "wins").
       - name: Run benchmarks
         env:
           REPEAT: ${{ github.event.inputs.repeat }}
           DEPTH: ${{ github.event.inputs.depth }}
         run: |
+          rm -f data/json/*.json
           deno run -A cli/main.ts run \
             --release ${{ matrix.version }} \
             --runtime ${{ matrix.runtime }} \
             --repeat ${REPEAT:-10} \
             --depth ${DEPTH:-100} \
             --warmup 3
-      
+
       # Upload results as artifact
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
