@@ -53,6 +53,12 @@ export interface MemorySample {
   heapUsedBefore: number;
   heapUsedAfter: number;
   heapUsedDelta: number;
+  /**
+   * Heap used after forced major GC at the end of the iteration. Present when
+   * the runtime exposes a GC trigger (Node/Deno with `--expose-gc`, Bun's
+   * `Bun.gc()`); absent otherwise.
+   */
+  heapUsedAfterGc?: number;
 }
 
 /**

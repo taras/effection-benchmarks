@@ -47,10 +47,13 @@ export const nodeAdapter: RuntimeAdapter = {
     const versionStr = yield* this.version();
     const majorVersion = parseMajorVersion(versionStr);
 
-    // Node 22+ supports --experimental-strip-types for TypeScript
+    // Node 22+ supports --experimental-strip-types for TypeScript.
+    // --expose-gc lets the harness force a major GC after each iteration so
+    // it can capture a clean post-GC retained-heap measurement.
     return yield* invokeHarness({
       command: "node",
       runtimeArgs: [
+        "--expose-gc",
         "--experimental-strip-types",
         "--no-warnings",
       ],

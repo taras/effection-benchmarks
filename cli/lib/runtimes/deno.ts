@@ -46,11 +46,13 @@ export const denoAdapter: RuntimeAdapter = {
     const versionStr = yield* this.version();
     const majorVersion = parseMajorVersion(`deno ${versionStr}`);
 
-    // Deno needs -A for all permissions and runs TypeScript natively
-    // The workspace has deno.json with nodeModulesDir: "auto" for bare specifier resolution
+    // Deno needs -A for all permissions and runs TypeScript natively.
+    // The workspace has deno.json with nodeModulesDir: "auto" for bare specifier resolution.
+    // --v8-flags=--expose-gc lets the harness force a major GC after each
+    // iteration to capture a clean post-GC retained-heap measurement.
     return yield* invokeHarness({
       command: "deno",
-      runtimeArgs: ["run", "-A"],
+      runtimeArgs: ["run", "-A", "--v8-flags=--expose-gc"],
       runtimeId: "deno",
       runtimeMajorVersion: majorVersion,
       scenarioOpts: opts,

@@ -8,7 +8,7 @@
 
 import { scoped, type Operation } from "effection";
 import type { MeasureOpts, MemorySample, ScenarioFn } from "./types.ts";
-import { snapshotMemory } from "./memory.ts";
+import { forceGc, snapshotMemory } from "./memory.ts";
 
 export interface MeasureOutput {
   times: number[];
@@ -40,6 +40,12 @@ export function* measure(
     const elapsed = performance.now() - start;
     const memAfter = snapshotMemory();
 
+    // Force a major GC outside the timed window so heapUsedAfterGc reflects
+    // genuine retained memory rather than yet-to-be-collected garbage. If
+    // the runtime doesn't expose a GC trigger, we omit the field.
+    const gcAvailable = forceGc();
+    const heapUsedAfterGc = gcAvailable ? snapshotMemory().heapUsed : undefined;
+
     times.push(elapsed);
     memorySamples.push({
       rssBefore: memBefore.rss,
@@ -48,6 +54,7 @@ export function* measure(
       heapUsedBefore: memBefore.heapUsed,
       heapUsedAfter: memAfter.heapUsed,
       heapUsedDelta: memAfter.heapUsed - memBefore.heapUsed,
+      ...(heapUsedAfterGc !== undefined ? { heapUsedAfterGc } : {}),
     });
   }
 

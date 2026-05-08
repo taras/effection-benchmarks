@@ -15,8 +15,12 @@ import { z } from "zod";
  *            Aggregates are computed at query time in DuckDB.
  * Version 3: Add per-iteration retained-memory samples (`memorySamples`).
  *            Field is optional so v2 files still validate.
+ * Version 4: Add post-GC retained heap (`heapUsedAfterGc`) to `MemorySample`.
+ *            Field is optional so v3 files still validate. The harness now
+ *            forces a major GC after each iteration's scoped block before
+ *            taking the snapshot, eliminating GC-cycle pollution.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Phase 1 runtimes (server-side).
@@ -79,6 +83,10 @@ export type Samples = z.infer<typeof SamplesSchema>;
  * are pre-computed for downstream queries. "Retained" not "peak" — the GC
  * may run between snapshots, so deltas can be negative and are noisier
  * than latency.
+ *
+ * `heapUsedAfterGc` (added in schema v4) is captured after a forced major
+ * GC at the end of each iteration. It's the cleanest signal for steady-state
+ * retained memory and isn't perturbed by the natural GC cycle.
  */
 export const MemorySampleSchema = z.object({
   rssBefore: z.number().nonnegative().finite(),
@@ -87,6 +95,7 @@ export const MemorySampleSchema = z.object({
   heapUsedBefore: z.number().nonnegative().finite(),
   heapUsedAfter: z.number().nonnegative().finite(),
   heapUsedDelta: z.number().finite(),
+  heapUsedAfterGc: z.number().nonnegative().finite().optional(),
 });
 
 export type MemorySample = z.infer<typeof MemorySampleSchema>;
