@@ -133,7 +133,7 @@ jobs:
             --runtime ${{ matrix.runtime }} \
             --repeat ${REPEAT:-10} \
             --depth ${DEPTH:-100} \
-            --warmup 3
+            --warmup 10
 
       # Upload results as artifact
       - name: Upload benchmark results

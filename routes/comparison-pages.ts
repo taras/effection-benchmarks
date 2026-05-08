@@ -193,6 +193,22 @@ await conn.query(\`
     list_sort(arr)[GREATEST(1, CAST(CEIL(len(arr) * p / 100.0) AS INTEGER))]
   )
 \`);
+
+// Trimmed average — sort, drop floor(N/10) from each tail, average the rest.
+// Robust to outliers (cold-start V8 arena commits, mid-iteration major GCs)
+// without throwing away signal on small sample sets: degrades to plain
+// list_avg when N < 10 (trim count is 0).
+await conn.query(\`
+  CREATE OR REPLACE MACRO trimmedAvg(arr) AS (
+    list_avg(
+      list_slice(
+        list_sort(arr),
+        CAST(FLOOR(len(arr) / 10.0) AS INTEGER) + 1,
+        len(arr) - CAST(FLOOR(len(arr) / 10.0) AS INTEGER)
+      )
+    )
+  )
+\`);
 \`\`\`
 
 \`\`\`js
@@ -539,9 +555,9 @@ The forced-GC snapshot and peak snapshots are taken outside the timed window, so
 
 ## RSS varies wildly across runtimes
 
-The Average RSS Δ chart looks completely different depending on the runtime, and **most of the difference is allocator behavior, not library behavior**:
+The Trimmed-mean RSS Δ chart looks completely different depending on the runtime, and **most of the difference is allocator behavior, not library behavior**:
 
-- **Node / Deno (V8)**: V8 hoards memory and grows arenas in 128 KB chunks, so per-iteration RSS deltas are quantized — any single iteration is either 0 or a 128 KB jump. We average across iterations because the median is always 0; the average reveals real growth.
+- **Node / Deno (V8)**: V8 hoards memory and grows arenas in 128 KB chunks, so per-iteration RSS deltas are quantized — any single iteration is either 0 or a 128 KB jump. We use a trimmed mean across iterations because the median is always 0 and the plain average is dominated by cold-start arena commits on the first measured iteration.
 - **Bun (mimalloc)**: often *negative*. Bun's allocator decommits pages back to the OS via \`madvise(MADV_FREE)\` after \`scoped()\` teardown, so RSS literally drops between iterations.
 - **Bun heap accounting is sparse**: \`process.memoryUsage().heapUsed\` doesn't track the JSC heap meaningfully, so on Bun **read RSS instead of heap**; on Node/Deno **read heap instead of RSS**.
 
@@ -741,9 +757,9 @@ display(peakHeapRelative.length === 0
 
 > Peak ≥ post-GC retained for any given scenario. The gap between them is the per-iteration "working" allocation — temporary objects allocated during the scenario and reclaimed by the time the forced GC runs.
 
-## Average RSS Δ per Iteration
+## Trimmed-mean RSS Δ per Iteration
 
-Process-wide RSS change from start to end of each iteration, **averaged** across all measured iterations rather than median. The median was quantized by V8's 128 KB arena-growth chunks — most iterations show 0 and a few show 128 KB, so the median collapses to 0 and hides real per-iteration growth. The average captures it: e.g. \`effection.events\` on Node 4.x shows ~2-3 MB per iteration on average even though its median is 0.
+Process-wide RSS change from start to end of each iteration, with a **10% trimmed mean** across all measured iterations: sort, drop the highest and lowest, average the rest. We can't use the median because V8's allocator grows arenas in 128 KB chunks — per-iteration deltas are quantized to either 0 or +128 KB and the median collapses to 0. We can't use a plain average because cold-start arena commits on the first measured iteration can be tens of MB and dominate the result for the rest of the run. The trimmed mean is the middle ground: discards the cold-start outlier and any one-off GC reclaim, keeps the steady-state signal.
 
 Note Bun runs negative on this chart for many scenarios because mimalloc decommits pages back to the OS after \`scoped()\` teardown.
 
@@ -755,7 +771,7 @@ const rssData = (await query(\`
       WHEN scenario LIKE '%.recursion' THEN 'recursion'
       WHEN scenario LIKE '%.events' THEN 'events'
     END AS scenarioType,
-    list_avg(list_transform(memorySamples, s -> s.rssDelta)) AS rssDeltaAvg
+    trimmedAvg(list_transform(memorySamples, s -> s.rssDelta)) AS rssDeltaAvg
   FROM benchmarks
   WHERE runtime = '\${runtime}'
     AND releaseTag = '\${releaseTag}'
@@ -774,12 +790,12 @@ const rssEvents = rssData.filter(d => d.scenarioType === "events");
 function rssPlot(rows, label) {
   if (rows.length === 0) return null;
   return Plot.plot({
-    title: \`\${label} — Average RSS Δ per Iteration (\${runtime} / \${releaseTag})\`,
+    title: \`\${label} — Trimmed-mean RSS Δ per Iteration (\${runtime} / \${releaseTag})\`,
     width,
     height: 320,
     marginTop: 30,
     x: {label: "Library"},
-    y: {label: "RSS delta avg (KB)", grid: true},
+    y: {label: "RSS delta trimmed-mean (KB)", grid: true},
     color: {legend: true, scheme: "tableau10"},
     marks: [
       Plot.barY(rows, {

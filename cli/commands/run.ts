@@ -50,8 +50,8 @@ const configliere = new Configliere({
   },
   warmup: {
     schema: z.number().int().nonnegative(),
-    default: 3,
-    description: "Warmup runs to discard",
+    default: 10,
+    description: "Warmup runs to discard (default 10; raise to drain V8 arena warmup)",
   },
   "rxjs-version": {
     schema: z.string().optional(),

@@ -128,6 +128,22 @@ await conn.query(`
     list_sort(arr)[GREATEST(1, CAST(CEIL(len(arr) * p / 100.0) AS INTEGER))]
   )
 `);
+
+// Trimmed average — sort, drop floor(N/10) from each tail, average the rest.
+// Robust to outliers (cold-start V8 arena commits, mid-iteration major GCs)
+// without throwing away signal on small sample sets: degrades to plain
+// list_avg when N < 10 (trim count is 0).
+await conn.query(`
+  CREATE OR REPLACE MACRO trimmedAvg(arr) AS (
+    list_avg(
+      list_slice(
+        list_sort(arr),
+        CAST(FLOOR(len(arr) / 10.0) AS INTEGER) + 1,
+        len(arr) - CAST(FLOOR(len(arr) / 10.0) AS INTEGER)
+      )
+    )
+  )
+`);
 ```
 
 ```js
